@@ -1,5 +1,22 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Banco de dados
+
+O projeto usa MySQL 8 com Prisma ORM. O modelo está em `prisma/schema.prisma`, e as alterações versionadas do banco ficam em `prisma/migrations`.
+
+1. Crie um banco MySQL vazio chamado `gerenciamento_restaurante`.
+2. Copie `.env.example` para `.env` e ajuste usuário, senha, host e porta.
+3. Instale as dependências com `npm install`.
+4. Aplique a migration com `npm run db:deploy`.
+
+Durante o desenvolvimento, use `npm run db:migrate` após alterar o schema. Para inspecionar os dados pelo navegador, execute `npm run db:studio`.
+
+O cliente compartilhado para Server Components, Route Handlers e Server Actions está disponível em `lib/prisma.ts`:
+
+```ts
+import { prisma } from "@/lib/prisma";
+```
+
 ## Getting Started
 
 First, run the development server:

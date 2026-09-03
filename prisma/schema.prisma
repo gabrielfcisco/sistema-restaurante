@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum CategoriaProduto {
+  PRATO
+  SOBREMESA
+  BEBIDA
+}
+
+enum SetorProduto {
+  COZINHA
+  BAR
+}
+
+enum StatusMesa {
+  LIVRE
+  OCUPADA
+}
+
+enum StatusComanda {
+  ABERTA
+  EM_CONSUMO
+  CONTA_SOLICITADA
+  PAGA
+  FECHADA
+}
+
+enum StatusItemPedido {
+  PENDENTE
+  EM_PREPARO
+  PRONTO
+  ENTREGUE
+}
+
+model Cliente {
+  idCliente Int       @id @default(autoincrement()) @map("id_cliente") @db.UnsignedInt
+  cpf       String    @unique(map: "uq_cliente_cpf") @db.Char(11)
+  nome      String    @db.VarChar(120)
+  comandas  Comanda[]
+
+  @@map("cliente")
+}
+
+model Mesa {
+  idMesa   Int        @id @default(autoincrement()) @map("id_mesa") @db.UnsignedInt
+  numero   Int        @unique(map: "uq_mesa_numero") @db.UnsignedInt
+  status   StatusMesa @default(LIVRE)
+  comandas Comanda[]
+
+  @@map("mesa")
+}
+
+model Produto {
+  idProduto Int              @id @default(autoincrement()) @map("id_produto") @db.UnsignedInt
+  nome      String           @db.VarChar(120)
+  descricao String?          @db.VarChar(500)
+  preco     Decimal          @db.Decimal(10, 2)
+  categoria CategoriaProduto
+  setor     SetorProduto
+  ativo     Boolean          @default(true)
+  itens     ItemPedido[]
+
+  @@map("produto")
+}
+
+model Comanda {
+  idComanda      Int           @id @default(autoincrement()) @map("id_comanda") @db.UnsignedInt
+  qrCode         String        @unique(map: "uq_comanda_qr_code") @map("qr_code") @db.VarChar(255)
+  status         StatusComanda @default(ABERTA)
+  dataAbertura   DateTime      @default(now()) @map("data_abertura") @db.DateTime(0)
+  dataFechamento DateTime?     @map("data_fechamento") @db.DateTime(0)
+  idCliente      Int           @map("id_cliente") @db.UnsignedInt
+  idMesa         Int           @map("id_mesa") @db.UnsignedInt
+  cliente        Cliente       @relation(fields: [idCliente], references: [idCliente], onDelete: Restrict, onUpdate: Cascade, map: "fk_comanda_cliente")
+  mesa           Mesa          @relation(fields: [idMesa], references: [idMesa], onDelete: Restrict, onUpdate: Cascade, map: "fk_comanda_mesa")
+  pedidos        Pedido[]
+
+  @@index([idCliente], map: "ix_comanda_cliente")
+  @@index([idMesa], map: "ix_comanda_mesa")
+  @@index([status], map: "ix_comanda_status")
+  @@map("comanda")
+}
+
+model Pedido {
+  idPedido  Int          @id @default(autoincrement()) @map("id_pedido") @db.UnsignedInt
+  dataHora  DateTime     @default(now()) @map("data_hora") @db.DateTime(0)
+  status    String       @default("ABERTO") @db.VarChar(30)
+  idComanda Int          @map("id_comanda") @db.UnsignedInt
+  comanda   Comanda      @relation(fields: [idComanda], references: [idComanda], onDelete: Restrict, onUpdate: Cascade, map: "fk_pedido_comanda")
+  itens     ItemPedido[]
+
+  @@index([idComanda], map: "ix_pedido_comanda")
+  @@index([status], map: "ix_pedido_status")
+  @@map("pedido")
+}
+
+model ItemPedido {
+  idItem     Int              @id @default(autoincrement()) @map("id_item") @db.UnsignedInt
+  quantidade Int              @db.UnsignedInt
+  observacao String?          @db.VarChar(500)
+  status     StatusItemPedido @default(PENDENTE)
+  idPedido   Int              @map("id_pedido") @db.UnsignedInt
+  idProduto  Int              @map("id_produto") @db.UnsignedInt
+  pedido     Pedido           @relation(fields: [idPedido], references: [idPedido], onDelete: Cascade, onUpdate: Cascade, map: "fk_item_pedido_pedido")
+  produto    Produto          @relation(fields: [idProduto], references: [idProduto], onDelete: Restrict, onUpdate: Cascade, map: "fk_item_pedido_produto")
+
+  @@index([idPedido], map: "ix_item_pedido_pedido")
+  @@index([idProduto], map: "ix_item_pedido_produto")
+  @@index([status], map: "ix_item_pedido_status")
+  @@map("item_pedido")
+}
