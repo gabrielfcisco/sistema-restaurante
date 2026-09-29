@@ -1,53 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistema de restaurante — Grupo 9
 
-## Banco de dados
+Monorepo com API Node/Express e aplicativos React/Electron separados. Sprint atual: US-01 a US-06. Recepção no computador; mesa no computador nesta sprint, com interface preparada para futura adaptação Android via Capacitor.
 
-O projeto usa MySQL 8 com Prisma ORM. O modelo está em `prisma/schema.prisma`, e as alterações versionadas do banco ficam em `prisma/migrations`.
+## Começar
 
-1. Crie um banco MySQL vazio chamado `gerenciamento_restaurante`.
-2. Copie `.env.example` para `.env` e ajuste usuário, senha, host e porta.
-3. Instale as dependências com `npm install`.
-4. Aplique a migration com `npm run db:deploy`.
+Pré-requisitos: **Node 24 LTS**, npm 10 ou superior; MySQL 8 para trabalhar com persistência. O Node 20.17 encontrado nesta máquina é antigo para esta base. Confira `node --version` antes de instalar. Não há instalação global de Electron ou Prisma.
 
-Durante o desenvolvimento, use `npm run db:migrate` após alterar o schema. Para inspecionar os dados pelo navegador, execute `npm run db:studio`.
+Na pasta `sistema-restaurante`:
 
-O cliente compartilhado para Server Components, Route Handlers e Server Actions está disponível em `lib/prisma.ts`:
-
-```ts
-import { prisma } from "@/lib/prisma";
-```
-
-## Getting Started
-
-First, run the development server:
-
-```bash
+```sh
+npm ci
+npm run setup
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `dev` inicia a API e duas janelas Electron; não depende do MySQL para abrir as telas e consultar `/api/health`. As telas iniciais verificam conexão com a API e ainda não implementam as histórias.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Para executar separadamente, use um terminal para cada comando:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```sh
+npm run dev:api
+npm run dev:recepcao
+npm run dev:mesa
+```
 
-## Learn More
+## Banco
 
-To learn more about Next.js, take a look at the following resources:
+Crie um banco **de desenvolvimento** chamado `gerenciamento_restaurante` e configure `DATABASE_URL` em `apps/api/.env`. Credenciais não são incluídas nos frontends.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```sh
+npm run db:deploy
+npm run db:seed
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`db:deploy` aplica migrations pendentes; não execute contra um banco desconhecido. O seed cria seis mesas se faltarem e preserva as existentes. Não cria cartões ou clientes: a nova modelagem de cartões e os cadastros pertencem à sprint. Bancos que já aplicaram a migration inicial mantêm o mesmo histórico, agora em `apps/api/prisma`.
 
-## Deploy on Vercel
+`GET http://127.0.0.1:3333/api/health` verifica o processo. `GET /api/ready` consulta o banco e retorna 503 quando indisponível. Não confundir servidor iniciado com banco conectado.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Comandos
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Comando | Objetivo |
+|---|---|
+| `npm run check` | Lint, tipos, testes, builds e validação do schema |
+| `npm run build` | Gera API em `dist` e interfaces em `dist` de cada app |
+| `npm start -w @restaurante/api` | Inicia API compilada |
+| `npm start -w @restaurante/recepcao` | Abre interface compilada no Electron |
+| `npm start -w @restaurante/mesa` | Abre interface compilada no Electron |
+| `npm run package:recepcao` | Gera pasta executável desktop da recepção |
+| `npm run package:mesa` | Gera pasta executável desktop da mesa |
+| `npm run db:generate` | Gera cliente Prisma após mudança de schema |
+| `npm run db:migrate` | Cria/aplica migration em banco de desenvolvimento |
+| `npm run db:studio` | Abre inspeção local do banco |
+
+Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem instalador assinado. O backend é executado separadamente e não é embutido nos aplicativos.
+
+## Organização e continuidade
+
+- [Arquitetura e expansão](docs/arquitetura.md)
+- [Ambiente e dois computadores](docs/ambiente.md)
+- [Sprint 01 e divisão entre cinco integrantes](docs/sprint-01.md)
+- [Contratos propostos da API](docs/contratos-api.md)
+- [Pendências de modelagem](docs/banco.md)
+
+`apps/api` contém o backend; `apps/recepcao` e `apps/mesa` são os apps atuais. `packages/ui`, `packages/api-client` e `packages/contracts` são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
+
+Próximos apps: garçom, cozinha, bar, caixa e administração. Serão criados em `apps/` quando entrarem nas sprints. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.

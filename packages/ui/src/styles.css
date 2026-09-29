@@ -1,0 +1,15 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #28241e; background: #faf6ef; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header { display: flex; justify-content: space-between; gap: 20px; padding: 24px 6vw; background: #292723; color: white; }
+.brand { font-weight: 750; }
+main { max-width: 1000px; margin: auto; padding: 64px 24px; }
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -.04em; margin: 0 0 20px; }
+p { line-height: 1.65; max-width: 65ch; }
+.panel { margin-top: 32px; padding: 24px; border: 1px solid #e3dacd; border-radius: 18px; background: white; }
+button { min-height: 48px; padding: 12px 24px; border: 0; border-radius: 12px; background: #b94412; color: white; font: inherit; font-weight: 650; cursor: pointer; touch-action: manipulation; }
+button:disabled { opacity: .65; cursor: wait; }
+button:focus-visible { outline: 3px solid #292723; outline-offset: 4px; }
+.eyebrow { color: #974011; font-weight: 700; }
+@media (max-width: 600px) { main { padding: 36px 20px; } header { padding: 20px; } button { width: 100%; } }
+

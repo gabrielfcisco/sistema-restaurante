@@ -2,36 +2,46 @@
   "name": "sistema-restaurante",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "postinstall": "prisma generate",
-    "db:generate": "prisma generate",
-    "db:validate": "prisma validate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10"
   },
-  "dependencies": {
-    "@prisma/adapter-mariadb": "^7.10.0",
-    "@prisma/client": "^7.10.0",
-    "dotenv": "^17.4.2",
-    "mariadb": "^3.5.4",
-    "next": "16.3.3",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "concurrently -k -n API,RECEPCAO,MESA \"npm:dev:api\" \"npm:dev:recepcao\" \"npm:dev:mesa\"",
+    "dev:api": "npm run dev -w @restaurante/api",
+    "dev:recepcao": "npm run dev -w @restaurante/recepcao",
+    "dev:mesa": "npm run dev -w @restaurante/mesa",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint apps packages scripts tests --max-warnings=0",
+    "test": "tsx --test tests/*.test.ts",
+    "test:desktop": "electron scripts/smoke-desktop.mjs",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run db:validate",
+    "db:generate": "npm run db:generate -w @restaurante/api",
+    "db:validate": "npm run db:validate -w @restaurante/api",
+    "db:deploy": "npm run db:deploy -w @restaurante/api",
+    "db:migrate": "npm run db:migrate -w @restaurante/api",
+    "db:studio": "npm run db:studio -w @restaurante/api",
+    "db:seed": "npm run db:seed -w @restaurante/api",
+    "package:recepcao": "npm run package -w @restaurante/recepcao",
+    "package:mesa": "npm run package -w @restaurante/mesa"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.3",
-    "prisma": "^7.10.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0"
   }
 }
