@@ -1,8 +1,13 @@
 import express, { type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import type { HealthResponse } from '@restaurante/contracts';
+import { PrismaSprintService, erroBanco, type SprintService } from './modules/sprint-service';
+import { sprintRoutes } from './modules/sprint-routes';
+import { accessConfig, type AccessConfig } from './modules/autorizacao';
+import { ErroApi } from './modules/validacao';
+import { getPrisma } from './database/prisma';
 
-export function createApp(checkDatabase: () => Promise<void>) {
+export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig } = {}) {
   const app = express();
   const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174').split(',').map(s => s.trim());
   app.disable('x-powered-by');
@@ -18,11 +23,18 @@ export function createApp(checkDatabase: () => Promise<void>) {
     try { await checkDatabase(); response.json({ status: 'ok', database: 'connected' }); }
     catch { response.status(503).json({ error: { code: 'DATABASE_UNAVAILABLE', message: 'Banco de dados indisponível.' } }); }
   });
+  const access = options.access ?? accessConfig();
+  app.use('/api', sprintRoutes(options.service ?? new PrismaSprintService(getPrisma, access.sessionSeconds), access));
   app.use((_request, response) => {
     response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada.' } });
   });
   const handleError: ErrorRequestHandler = (error, _request, response, _next) => {
     void _next;
+    const mapped = erroBanco(error);
+    if (mapped instanceof ErroApi) {
+      response.status(mapped.status).json({ error: { code: mapped.code, message: mapped.message } });
+      return;
+    }
     const status = error.type === 'entity.parse.failed' ? 400 : error.type === 'entity.too.large' ? 413 : 500;
     response.status(status).json({ error: { code: status === 500 ? 'INTERNAL_ERROR' : 'INVALID_REQUEST', message: status === 500 ? 'Erro interno.' : 'Requisição inválida.' } });
   };

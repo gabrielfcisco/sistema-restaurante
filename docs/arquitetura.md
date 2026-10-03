@@ -44,4 +44,4 @@ Context isolation e sandbox ativos; Node desativado no renderer. Novas janelas e
 
 ## Fora da preparação
 
-Não há CRUD de negócio, leitura QR, login, autorização, Socket.IO, aplicativo Android ou integração de pagamento implementados. São entregas futuras; esta alteração estabelece ambiente e limites de módulos.
+As nove rotas de negócio da sprint 1 estão implementadas com persistência MySQL, autorização por credencial de instalação e sessões temporárias. Contratos e limites estão em docs/contratos-api.md. Leitura da câmera, interfaces de negócio, login individual, Socket.IO, aplicativo Android e integração de pagamento continuam fora desta entrega de backend.

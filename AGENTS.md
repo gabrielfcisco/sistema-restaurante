@@ -6,7 +6,7 @@ Use Node 24 LTS, TypeScript e npm. Execute npm run check após mudanças relevan
 Preserve migrations existentes; crie novas migrations para alterações de banco. Não aplique migrations em banco desconhecido.
 Frontend não importa Prisma, credenciais, Node ou Electron. Integrações de dispositivo ficam em adapters próprios.
 Electron deve manter contextIsolation, sandbox e nodeIntegration: false.
-Uma mesa admite várias comandas ativas; um cartão admite apenas uma. CPF e nome são os dados de cadastro.
+Uma mesa admite várias comandas ativas; um cartão admite apenas uma. Nome, CPF e telefone são obrigatórios no cadastro de novos clientes.
 Não implemente histórias fora da sprint 1–6 sem solicitação. Novos apps usam a mesma API e banco com autorização por função.
 legacy/nextjs é referência histórica, excluída dos workspaces e verificações. Não desenvolver ali.
 Interfaces e mensagens em português. Não incluir dados reais em seeds ou testes.

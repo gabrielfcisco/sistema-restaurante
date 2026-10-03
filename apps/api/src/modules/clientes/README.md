@@ -1,3 +1,3 @@
 # clientes
 
-Módulo reservado para a sprint 01. Rotas, validações e serviços serão implementados aqui. Consulte docs/contratos-api.md e docs/sprint-01.md. Não há endpoints de negócio implementados nesta base.
+Busca e cadastro implementados em routes.ts, ../sprint-service.ts e ../validacao.ts. CPF validado em runtime e único no banco. Consulte docs/contratos-api.md.

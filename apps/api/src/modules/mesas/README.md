@@ -1,3 +1,3 @@
 # mesas
 
-Módulo reservado para a sprint 01. Rotas, validações e serviços serão implementados aqui. Consulte docs/contratos-api.md e docs/sprint-01.md. Não há endpoints de negócio implementados nesta base.
+Mapa, detalhes, reserva e liberação implementados em routes.ts e ../sprint-service.ts. Mesa reservada aceita abertura; ocupada exige confirmação; manutenção bloqueia operações. Consulte docs/contratos-api.md.

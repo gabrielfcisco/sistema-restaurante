@@ -24,6 +24,10 @@ npm run dev:recepcao
 npm run dev:mesa
 ```
 
+## API da sprint 1
+
+As nove rotas de negócio estão implementadas; veja [contratos, credenciais e exemplos](docs/contratos-api.md). As interfaces continuam no scaffold de conexão. Configure RECEPCAO_API_TOKEN e MESA_DEVICE_TOKENS em apps/api/.env para acessar as rotas protegidas. Gere o cliente com `npm run db:generate` e aplique a migration incremental somente após conferir o banco de destino. Não há aplicação automática de migrations.
+
 ## Banco
 
 Crie um banco **de desenvolvimento** chamado `gerenciamento_restaurante` e configure `DATABASE_URL` em `apps/api/.env`. Credenciais não são incluídas nos frontends.
@@ -59,8 +63,8 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 - [Arquitetura e expansão](docs/arquitetura.md)
 - [Ambiente e dois computadores](docs/ambiente.md)
 - [Sprint 01 e divisão entre cinco integrantes](docs/sprint-01.md)
-- [Contratos propostos da API](docs/contratos-api.md)
-- [Pendências de modelagem](docs/banco.md)
+- [Contratos da API](docs/contratos-api.md)
+- [Modelagem e migration da sprint](docs/banco.md)
 
 `apps/api` contém o backend; `apps/recepcao` e `apps/mesa` são os apps atuais. `packages/ui`, `packages/api-client` e `packages/contracts` são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
 
