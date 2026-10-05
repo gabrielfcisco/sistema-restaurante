@@ -100,3 +100,17 @@ test('logout responde 204 e erro inesperado não expõe segredo', async () => {
     assert.doesNotMatch(await response.text(), /segredo/);
   }, { sair: async token => { assert.equal(token, 'sessao'); }, listarMesas: async () => { throw new Error('segredo'); } });
 });
+test('consulta de sessão usa Bearer e preserva erros de expiração e revogação', async () => {
+  await http(async url => {
+    assert.equal((await fetch(url + '/acessos/mesa')).status, 401);
+    const valid = await fetch(url + '/acessos/mesa', { headers: { Authorization: 'Bearer sessao-valida' } });
+    assert.equal(valid.status, 200);
+    assert.equal((await valid.json()).nomeCliente, 'Cliente fictício');
+    const revoked = await fetch(url + '/acessos/mesa', { headers: { Authorization: 'Bearer revogada' } });
+    assert.equal(revoked.status, 401);
+    assert.equal((await revoked.json()).error.code, 'SESSAO_INVALIDA');
+  }, { sessao: async token => {
+    if (token !== 'sessao-valida') throw new ErroApi(401, 'SESSAO_INVALIDA', 'Sessão inválida.');
+    return { expiraEm: new Date().toISOString(), idComanda: 1, codigoCartao: '01234', idMesa: 8, numeroMesa: 8, nomeCliente: 'Cliente fictício' };
+  } });
+});

@@ -54,6 +54,8 @@ Token aleatório de 256 bits; somente SHA-256 é persistido. Expiração configu
 
 `DELETE /acessos/mesa`, Bearer da sessão: 204, revoga somente aquela sessão. Ausente/expirada/revogada: 401. O aplicativo limpa seus dados locais ao sair. Liberação da mesa revoga todas as sessões dos seus atendimentos.
 
+`GET /acessos/mesa`, Bearer da sessão: 200 AtendimentoMesaDto, com identificação e expiração, sem retornar token. Revalida expiração, revogação, vínculo atual, estado da comanda e da mesa. Sessão inválida retorna 401 SESSAO_INVALIDA. O app da mesa consulta a cada 15 segundos.
+
 ## Erros e operação
 
 Formato `{ "error": { "code": "CARTAO_EM_USO", "message": "Esta comanda física já está em uso." } }`.

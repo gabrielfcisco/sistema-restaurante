@@ -11,10 +11,11 @@ Na pasta `sistema-restaurante`:
 ```sh
 npm ci
 npm run setup
+npm run setup:sprint
 npm run dev
 ```
 
-`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `dev` inicia a API e duas janelas Electron; não depende do MySQL para abrir as telas e consultar `/api/health`. As telas iniciais verificam conexão com a API e ainda não implementam as histórias.
+`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API e as duas janelas Electron.
 
 Para executar separadamente, use um terminal para cada comando:
 
@@ -26,7 +27,7 @@ npm run dev:mesa
 
 ## API da sprint 1
 
-As nove rotas de negócio estão implementadas; veja [contratos, credenciais e exemplos](docs/contratos-api.md). As interfaces continuam no scaffold de conexão. Configure RECEPCAO_API_TOKEN e MESA_DEVICE_TOKENS em apps/api/.env para acessar as rotas protegidas. Gere o cliente com `npm run db:generate` e aplique a migration incremental somente após conferir o banco de destino. Não há aplicação automática de migrations.
+A API do Felipe está integrada às telas de cadastro/busca, abertura, mapa e gerenciamento de mesas, identificação por QR/código e saída da sessão. Veja [contratos da API](docs/contratos-api.md) e [configuração e demonstração das interfaces](docs/interfaces.md). GET /acessos/mesa revalida o acesso temporário. Configure RECEPCAO_API_TOKEN e MESA_DEVICE_TOKENS em apps/api/.env e provisione as credenciais desktop. Gere o cliente com `npm run db:generate` e aplique migrations somente após conferir o banco de destino.
 
 ## Banco
 
@@ -61,6 +62,7 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 ## Organização e continuidade
 
 - [Arquitetura e expansão](docs/arquitetura.md)
+- [Interfaces, configuração desktop e demonstração da sprint](docs/interfaces.md)
 - [Ambiente e dois computadores](docs/ambiente.md)
 - [Sprint 01 e divisão entre cinco integrantes](docs/sprint-01.md)
 - [Contratos da API](docs/contratos-api.md)

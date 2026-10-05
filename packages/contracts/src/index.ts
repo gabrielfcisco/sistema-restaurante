@@ -20,3 +20,17 @@ export interface SessaoMesaDto {
   idMesa: number; numeroMesa: number; nomeCliente: string;
 }
 export interface LiberarMesaDto { idMesa: number; status: 'LIVRE'; comandasEncerradas: number }
+export type AtendimentoMesaDto = Omit<SessaoMesaDto, 'token'>;
+export function normalizarCpf(value: string) { return value.replace(/\D/g, ''); }
+export function cpfValido(value: string) {
+  if (!/^(\d{11}|\d{3}\.\d{3}\.\d{3}-\d{2})$/.test(value)) return false;
+  const cpf = normalizarCpf(value);
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  for (const length of [9, 10]) {
+    let sum = 0;
+    for (let i = 0; i < length; i++) sum += Number(cpf[i]) * (length + 1 - i);
+    if ((sum * 10) % 11 % 10 !== Number(cpf[length])) return false;
+  }
+  return true;
+}
+export function mascararCpf(cpf: string) { return '***.***.' + cpf.slice(6, 9) + '-' + cpf.slice(9); }

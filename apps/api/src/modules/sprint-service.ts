@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto } from '@restaurante/contracts';
+import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto, AtendimentoMesaDto } from '@restaurante/contracts';
 import type { PrismaClient, Prisma, Comanda, Cartao } from '../generated/prisma/client';
 import { ErroApi, exigir, telefone } from './validacao';
 
@@ -19,6 +19,7 @@ export interface SprintService {
   reservar(idMesa: number): Promise<MesaDto>;
   liberar(idMesa: number): Promise<LiberarMesaDto>;
   acessar(codigo: string, idMesa: number): Promise<SessaoMesaDto>;
+  sessao(token: string): Promise<AtendimentoMesaDto>;
   sair(token: string): Promise<void>;
 }
 export function erroBanco(error: unknown): Error {
@@ -139,6 +140,18 @@ export class PrismaSprintService implements SprintService {
       return { token, expiraEm: expiraEm.toISOString(), idComanda: c.idComanda, codigoCartao: codigo,
         idMesa, numeroMesa: mesa.numero, nomeCliente: c.cliente.nome };
     });
+  }
+  async sessao(token: string): Promise<AtendimentoMesaDto> {
+    const session = await this.db().sessaoMesa.findUnique({ where: { tokenHash: hash(token) },
+      include: { comanda: { include: { cliente: true, cartao: true, mesa: true, vinculoAtivo: true } } } });
+    exigir(session && !session.revogadaEm && session.expiraEm.getTime() > Date.now(),
+      401, 'SESSAO_INVALIDA', 'Sessão ausente, expirada ou revogada.');
+    const c = session.comanda;
+    exigir(ativos.some(status => status === c.status) && c.dataFechamento === null
+      && c.vinculoAtivo && c.vinculoAtivo.idCartao === c.idCartao && c.cartao && c.mesa.status === 'OCUPADA',
+      401, 'SESSAO_INVALIDA', 'Atendimento encerrado ou alterado. Identifique seu cartão novamente.');
+    return { expiraEm: session.expiraEm.toISOString(), idComanda: c.idComanda, codigoCartao: c.cartao.codigo,
+      idMesa: c.idMesa, numeroMesa: c.mesa.numero, nomeCliente: c.cliente.nome };
   }
   async sair(token: string) {
     const now = new Date();

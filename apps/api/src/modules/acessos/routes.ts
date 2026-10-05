@@ -22,6 +22,7 @@ export function acessosRoutes(service: SprintService, config: AccessConfig) {
     if (body.idMesa !== undefined) exigir(id(body.idMesa) === device.idMesa, 403, 'MESA_INCORRETA', 'Mesa incompatível com o dispositivo.');
     res.status(201).json(await service.acessar(codigo(body.codigoCartao), device.idMesa));
   });
+  router.get('/mesa', async (req, res) => { res.json(await service.sessao(bearer(req))); });
   router.delete('/mesa', async (req, res) => { await service.sair(bearer(req)); res.sendStatus(204); });
   return router;
 }

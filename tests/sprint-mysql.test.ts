@@ -54,16 +54,20 @@ test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessõ
     const session = await service.acessar('58324', 1);
     assert.equal(session.nomeCliente, cliente.nome);
     assert.equal(session.numeroMesa, 1);
+    assert.equal((await service.sessao(session.token)).idComanda, opened.dto.idComanda);
     const stored = await db.sessaoMesa.findUniqueOrThrow({ where: { tokenHash: hash(session.token) } });
     assert.notEqual(stored.tokenHash, session.token);
     await service.sair(session.token);
+    await assert.rejects(service.sessao(session.token), { code: 'SESSAO_INVALIDA' });
     await assert.rejects(service.sair(session.token), { code: 'SESSAO_INVALIDA' });
     assert.equal((await service.detalheMesa(1)).comandasAtivas, 2);
     const session2 = await service.acessar('58325', 1);
     const expired = await service.acessar('58324', 1);
     await db.sessaoMesa.update({ where: { tokenHash: hash(expired.token) }, data: { expiraEm: new Date(0) } });
+    await assert.rejects(service.sessao(expired.token), { code: 'SESSAO_INVALIDA' });
     await assert.rejects(service.sair(expired.token), { code: 'SESSAO_INVALIDA' });
     assert.equal((await service.liberar(1)).comandasEncerradas, 2);
+    await assert.rejects(service.sessao(session2.token), { code: 'SESSAO_INVALIDA' });
     assert.equal(await db.vinculoCartao.count(), 0);
     await assert.rejects(service.sair(session2.token), { code: 'SESSAO_INVALIDA' });
     await assert.rejects(service.acessar('58324', 1), { code: 'SEM_ATENDIMENTO' });
@@ -73,6 +77,7 @@ test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessõ
     const reused = await service.abrir(input, 'chave-teste-abertura-03');
     assert.notEqual(reused.dto.idComanda, opened.dto.idComanda);
     assert.equal(reused.dto.idCartao, opened.dto.idCartao);
+    await assert.rejects(service.sessao(session2.token), { code: 'SESSAO_INVALIDA' });
     await assert.rejects(service.abrir({ ...input, idMesa: 5 }, 'chave-teste-abertura-04'), { code: 'MESA_INDISPONIVEL' });
     await service.reservar(4);
     assert.equal((await service.liberar(4)).comandasEncerradas, 0);
