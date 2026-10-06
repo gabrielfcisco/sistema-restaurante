@@ -17,6 +17,8 @@ npm run dev
 
 `setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API e as duas janelas Electron.
 
+Ao trocar de branch ou receber alterações de dependências, execute `npm ci` novamente na raiz `sistema-restaurante`. Isso atualiza os vínculos dos pacotes internos, incluindo `@restaurante/desktop`. A inicialização verifica a versão do Node e esse pacote antes de abrir as janelas.
+
 Para executar separadamente, use um terminal para cada comando:
 
 ```sh

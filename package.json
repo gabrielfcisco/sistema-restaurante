@@ -14,6 +14,7 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "setup:sprint": "node scripts/configure-sprint.mjs",
+    "predev": "node scripts/check-dev.mjs",
     "dev": "concurrently -k -n API,RECEPCAO,MESA \"npm:dev:api\" \"npm:dev:recepcao\" \"npm:dev:mesa\"",
     "dev:api": "npm run dev -w @restaurante/api",
     "dev:recepcao": "npm run dev -w @restaurante/recepcao",

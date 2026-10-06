@@ -1,6 +1,7 @@
-import { createServer } from 'vite';
+import './check-dev.mjs';
 import { spawn } from 'node:child_process';
-import electron from 'electron';
+const { createServer } = await import('vite');
+const { default: electron } = await import('electron');
 const server = await createServer({ root: process.cwd() });
 await server.listen();
 const address = server.resolvedUrls.local[0];

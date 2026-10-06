@@ -80,7 +80,7 @@ export function Reception() {
     alterarCpf(''); setMesaId(0); setCodigoCartao(''); setConfirmar(false); setDetalhe(null); setConfirmarLiberacao(false); setError(''); setStatus('Pronto para o próximo atendimento.');
   }
   return <AppShell title="Recepção">
-    <div className="heading-row"><div><p className="eyebrow">Atendimento • Sprint 01</p><h1>Receber bem começa aqui.</h1><p>Localize o cliente, escolha a mesa e entregue seu cartão.</p></div><Button className="secondary" disabled={busy} onClick={() => void act(refresh)}>Atualizar mapa</Button></div>
+    <div className="heading-row"><div><p className="eyebrow">Atendimento </p><h1>Receber bem começa aqui.</h1><p>Localize o cliente, escolha a mesa e entregue seu cartão.</p></div><Button className="secondary" disabled={busy} onClick={() => void act(refresh)}>Atualizar mapa</Button></div>
     <p role="status" className="notice">{status}</p>{error && <p role="alert" className="notice error">{error}</p>}
     <div className="reception-grid">
       <section className="panel"><p className="eyebrow">01 / Cliente</p><h2>Quem chegou?</h2>
