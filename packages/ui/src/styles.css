@@ -77,3 +77,23 @@ hr { margin: 28px 0; border: 0; border-top: 1px solid #eee5da; }
 .menu-gateway { padding: 24px; margin-block: 28px; background: #f5f2ed; border-radius: 12px; }
 @media (max-width: 1000px) { .reception-grid { grid-template-columns: 340px 1fr; }.table-grid { grid-template-columns: repeat(2, 1fr); }.access-layout { grid-template-columns: 1fr 1fr; gap: 32px; } }
 @media (max-width: 760px) { main { padding: 28px 20px; }.reception-grid, .access-layout { grid-template-columns: 1fr; }.access-layout { min-height: 0; }.heading-row { align-items: flex-start; flex-direction: column; }.card-identification { flex-direction: column; align-items: flex-start; }.panel { padding: 22px; }.table-grid { grid-template-columns: repeat(2, 1fr); }.inline button { width: auto; } }
+
+/* Mesa e quatro cadeiras, com estados identificados por texto e cor. */
+.table-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.table-card { align-items: center; min-height: 126px; padding: 10px 6px; gap: 6px; text-align: center; box-shadow: 0 3px 8px #28241e08; }
+.table-card.livre { --table-color: #2d925f; --table-fill: #e8f5ed; }
+.table-card.ocupada { --table-color: #cf4137; --table-fill: #faeae8; }
+.table-card.reservada { --table-color: #cf8213; --table-fill: #fff4dc; }
+.table-card.manutencao { --table-color: #687580; --table-fill: #eef0f2; }
+.table-card.livre, .table-card.ocupada, .table-card.reservada, .table-card.manutencao { background: white; border-color: #e8e0d6; color: #28241e; }
+.table-card.selected { box-shadow: 0 0 0 3px var(--table-color); }
+.table-drawing { position: relative; width: 100px; height: 82px; display: grid; place-items: center; }
+.table-top { width: 64px; height: 49px; display: flex; flex-direction: column; justify-content: center; border: 1px solid var(--table-color); border-radius: 13px; background: var(--table-fill); }
+.table-number { font-size: 1.2rem; line-height: 1.2; }
+.table-status { color: var(--table-color); font-size: .6rem; font-weight: 700; }
+.chair { position: absolute; border-radius: 50%; background: var(--table-color); width: 23px; height: 12px; }
+.chair.top { top: 1px; left: 39px; }.chair.bottom { bottom: 1px; left: 39px; }
+.chair.left, .chair.right { top: 30px; width: 12px; height: 23px; }
+.chair.left { left: 1px; }.chair.right { right: 1px; }
+.table-card small { font-size: .65rem; color: #756e64; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

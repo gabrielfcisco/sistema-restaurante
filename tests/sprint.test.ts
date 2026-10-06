@@ -10,7 +10,7 @@ const recepcaoToken = 'recepcao-ficticia-para-testes-000000';
 const deviceToken = 'tablet-ficticio-para-testes-00000000';
 const access = { recepcaoToken, dispositivos: [{ token: deviceToken, idMesa: 8 }], sessionSeconds: 600 };
 async function http(run: (url: string) => Promise<void>, service: Partial<SprintService> = {}) {
-  const server = createApp(async () => {}, { service: service as SprintService, access }).listen(0, '127.0.0.1');
+  const server = createApp(async () => {}, { service: { mesaDispositivo: async (_token: string, idMesa: number) => ({ idMesa, numero: idMesa }), ...service } as SprintService, access }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   try { await run(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api`); }
   finally { await new Promise<void>((resolve, reject) => server.close(e => e ? reject(e) : resolve())); }
@@ -113,4 +113,34 @@ test('consulta de sessão usa Bearer e preserva erros de expiração e revogaç�
     if (token !== 'sessao-valida') throw new ErroApi(401, 'SESSAO_INVALIDA', 'Sessão inválida.');
     return { expiraEm: new Date().toISOString(), idComanda: 1, codigoCartao: '01234', idMesa: 8, numeroMesa: 8, nomeCliente: 'Cliente fictício' };
   } });
+});
+
+test('QR administrativo altera a mesa validada, exige dispositivo e rejeita números inválidos', async () => {
+  let atual = { idMesa: 8, numero: 8 };
+  let alteracoes = 0;
+  await http(async url => {
+    assert.equal((await fetch(url + '/acessos/dispositivo')).status, 401);
+    assert.equal((await post(url + '/acessos/dispositivo', { numero: 42, codigoAdmin: 'adm1234' })).status, 401);
+    assert.equal((await post(url + '/acessos/dispositivo', { numero: 42, codigoAdmin: 'errado' }, deviceToken)).status, 403);
+    for (const numero of [0, -1, 1.5, '42', 4294967296]) {
+      assert.equal((await post(url + '/acessos/dispositivo', { numero, codigoAdmin: 'adm1234' }, deviceToken)).status, 400);
+    }
+    assert.equal(alteracoes, 0);
+    const inicial = await fetch(url + '/acessos/dispositivo', { headers: { Authorization: `Bearer ${deviceToken}` } });
+    assert.deepEqual(await inicial.json(), atual);
+    const saved = await post(url + '/acessos/dispositivo', { numero: 42, codigoAdmin: 'adm1234' }, deviceToken);
+    assert.equal(saved.status, 200);
+    assert.deepEqual(await saved.json(), { idMesa: 9, numero: 42 });
+    assert.equal((await post(url + '/acessos/mesa', { codigoCartao: '01234', idMesa: 8 }, deviceToken)).status, 403);
+    assert.equal((await post(url + '/acessos/mesa', { codigoCartao: '01234' }, deviceToken)).status, 201);
+    assert.equal((await post(url + '/acessos/mesa', { codigoCartao: '88888' }, deviceToken)).status, 403);
+  }, {
+    mesaDispositivo: async token => { assert.equal(token, deviceToken); return atual; },
+    configurarDispositivo: async (token, numero) => { assert.equal(token, deviceToken); assert.equal(numero, 42); alteracoes++; atual = { idMesa: 9, numero }; return atual; },
+    acessar: async (codigoCartao, idMesa) => {
+      assert.equal(idMesa, 9);
+      if (codigoCartao === '88888') throw new ErroApi(403, 'MESA_INCORRETA', 'Esta comanda pertence a outra mesa.');
+      return { token: 'sessao', expiraEm: new Date().toISOString(), idComanda: 1, codigoCartao, idMesa, numeroMesa: 42, nomeCliente: 'Cliente fictício' };
+    }
+  });
 });

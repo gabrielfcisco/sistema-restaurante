@@ -14,7 +14,7 @@ export function allowedRequest(profile, value) {
   if (!value || typeof value !== 'object' || typeof value.path !== 'string' || typeof value.method !== 'string') return false;
   const routes = profile === 'recepcao'
     ? { GET: [/^\/(health|ready|mesas)$/, /^\/mesas\/[1-9]\d*$/], POST: [/^\/clientes(\/busca)?$/, /^\/atendimentos$/, /^\/mesas\/[1-9]\d*\/(reservar|liberar)$/] }
-    : { GET: [/^\/(health|ready)$/, /^\/acessos\/mesa$/], POST: [/^\/acessos\/mesa$/], DELETE: [/^\/acessos\/mesa$/] };
+    : { GET: [/^\/(health|ready)$/, /^\/acessos\/(mesa|dispositivo)$/], POST: [/^\/acessos\/(mesa|dispositivo)$/], DELETE: [/^\/acessos\/mesa$/] };
   return routes[value.method]?.some(pattern => pattern.test(value.path)) ?? false;
 }
 export async function desktopRequest(profile, config, request) {

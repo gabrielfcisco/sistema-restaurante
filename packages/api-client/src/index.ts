@@ -29,6 +29,8 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     return result.data as T;
   }
   return {
+    mesaDispositivo: () => request<{ idMesa: number; numero: number }>('/acessos/dispositivo'),
+    configurarDispositivo: (numero: number, codigoAdmin: string) => request<{ idMesa: number; numero: number }>('/acessos/dispositivo', 'POST', { numero, codigoAdmin }),
     health: () => request<HealthResponse>('/health'),
     buscarCliente: (cpf: string) => request<ClienteDto>('/clientes/busca', 'POST', { cpf }),
     criarCliente: (input: CriarClienteInput) => request<ClienteDto>('/clientes', 'POST', input),

@@ -55,8 +55,16 @@ model Mesa {
   numero   Int        @unique(map: "uq_mesa_numero") @db.UnsignedInt
   status   StatusMesa @default(LIVRE)
   comandas Comanda[]
+  dispositivos DispositivoMesa[]
 
   @@map("mesa")
+}
+
+model DispositivoMesa {
+  tokenHash String @id @map("token_hash") @db.Char(64)
+  idMesa Int @map("id_mesa") @db.UnsignedInt
+  mesa Mesa @relation(fields: [idMesa], references: [idMesa], onDelete: Restrict)
+  @@map("dispositivo_mesa")
 }
 
 model Produto {

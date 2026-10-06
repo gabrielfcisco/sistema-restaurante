@@ -11,6 +11,8 @@ function atendimento(c: Comanda & { cartao: Cartao | null }): AtendimentoDto {
     codigoCartao: c.cartao?.codigo ?? null, status: c.status, dataAbertura: c.dataAbertura.toISOString() };
 }
 export interface SprintService {
+  mesaDispositivo(token: string, idMesaInicial: number): Promise<{ idMesa: number; numero: number }>;
+  configurarDispositivo(token: string, numero: number): Promise<{ idMesa: number; numero: number }>;
   buscarCliente(cpf: string): Promise<ClienteDto>;
   criarCliente(input: CriarClienteInput): Promise<ClienteDto>;
   listarMesas(): Promise<MesaDto[]>;
@@ -34,6 +36,21 @@ export function erroBanco(error: unknown): Error {
 }
 export class PrismaSprintService implements SprintService {
   constructor(private db: () => PrismaClient, private sessionSeconds = 28800) {}
+
+  async mesaDispositivo(token: string, idMesaInicial: number) {
+    const vinculo = await this.db().dispositivoMesa.findUnique({ where: { tokenHash: hash(token) }, include: { mesa: true } });
+    const mesa = vinculo?.mesa ?? await this.db().mesa.findUnique({ where: { idMesa: idMesaInicial } });
+    exigir(mesa, 404, 'MESA_INEXISTENTE', 'Mesa não encontrada.');
+    return { idMesa: mesa.idMesa, numero: mesa.numero };
+  }
+
+  async configurarDispositivo(token: string, numero: number) {
+    const mesa = await this.db().mesa.findUnique({ where: { numero } });
+    exigir(mesa, 404, 'MESA_INEXISTENTE', 'Não existe mesa com este número.');
+    await this.db().dispositivoMesa.upsert({ where: { tokenHash: hash(token) },
+      create: { tokenHash: hash(token), idMesa: mesa.idMesa }, update: { idMesa: mesa.idMesa } });
+    return { idMesa: mesa.idMesa, numero: mesa.numero };
+  }
 
   private async transacao<T>(run: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     for (let attempt = 0; ; attempt++) {

@@ -8,6 +8,8 @@ export function TableAccess() {
   const [codigo, setCodigo] = useState(''), [session, setSession] = useState<SessaoMesaDto | null>(null);
   const [error, setError] = useState(''), [status, setStatus] = useState('Use seu cartão para identificar o atendimento.');
   const [busy, setBusy] = useState(false), [scanning, setScanning] = useState(false), [offline, setOffline] = useState(false);
+  const [admin, setAdmin] = useState(false), [numero, setNumero] = useState('');
+  const [mesaAtual, setMesaAtual] = useState<number | null>(null);
   const video = useRef<HTMLVideoElement>(null), stopCamera = useRef<(() => void) | null>(null);
   const generation = useRef(0), locked = useRef(false);
   function stop() { generation.current++; stopCamera.current?.(); stopCamera.current = null; setScanning(false); }
@@ -15,8 +17,26 @@ export function TableAccess() {
   async function acessar(value: string) {
     if (locked.current) return;
     locked.current = true; stop(); setBusy(true); setError('');
-    try { const s = await api.acessar(value.trim()); setSession(s); setCodigo(''); setOffline(false); setStatus('Atendimento identificado.'); }
+    try {
+      if (value.trim() === 'adm1234') {
+        const mesa = await api.mesaDispositivo();
+        setMesaAtual(mesa.numero); setNumero(String(mesa.numero)); setAdmin(true); setCodigo('');
+        setStatus('Confira e altere o número da mesa deste dispositivo.');
+        return;
+      }
+      const s = await api.acessar(value.trim()); setSession(s); setCodigo(''); setOffline(false); setStatus('Atendimento identificado.');
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível identificar seu cartão.'); }
+    finally { locked.current = false; setBusy(false); }
+  }
+  async function salvarMesa() {
+    if (locked.current) return;
+    locked.current = true; setBusy(true); setError('');
+    try {
+      const mesa = await api.configurarDispositivo(Number(numero), 'adm1234');
+      setMesaAtual(mesa.numero); setAdmin(false); setCodigo('');
+      setStatus('Dispositivo configurado para a mesa ' + mesa.numero + '. Identifique o cartão do próximo cliente.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível alterar a mesa.'); }
     finally { locked.current = false; setBusy(false); }
   }
   async function iniciarCamera() {
@@ -53,7 +73,10 @@ export function TableAccess() {
     catch { setError('Dados removidos deste dispositivo. Sem conexão para revogar no servidor; a sessão expira automaticamente.'); }
   }
   return <AppShell title="Mesa">
-    {session ? <section className="panel welcome"><p className="eyebrow">Atendimento identificado</p><h1>Olá, {session.nomeCliente}.</h1><p className="session-number">Comanda #{session.idComanda} · Mesa {session.numeroMesa} · Cartão {session.codigoCartao}</p>
+    {admin ? <section className="panel welcome"><p className="eyebrow">Configuração do dispositivo</p><h1>Alterar mesa</h1><p>Mesa atual: <strong>{mesaAtual}</strong>. Este número define quais comandas podem acessar este dispositivo.</p>
+      {error && <p role="alert" className="notice error">{error}</p>}
+      <form onSubmit={e => { e.preventDefault(); void salvarMesa(); }}><label htmlFor="numero-mesa">Número da mesa</label><input id="numero-mesa" type="number" min={1} max={4294967295} step={1} value={numero} onChange={e => setNumero(e.target.value)} disabled={busy} autoFocus required /><div className="table-actions"><Button disabled={busy || !/^[1-9]\d*$/.test(numero) || Number(numero) > 4294967295}>{busy ? 'Salvando…' : 'Salvar mesa'}</Button><Button type="button" className="secondary" disabled={busy} onClick={() => { setAdmin(false); setError(''); setStatus('Use seu cartão para identificar o atendimento.'); }}>Cancelar</Button></div></form>
+    </section> : session ? <section className="panel welcome"><p className="eyebrow">Atendimento identificado</p><h1>Olá, {session.nomeCliente}.</h1><p className="session-number">Comanda #{session.idComanda} · Mesa {session.numeroMesa} · Cartão {session.codigoCartao}</p>
       <p role="status">{offline ? 'Aguardando conexão com o servidor.' : 'Seu cartão foi validado para esta mesa.'}</p>
       {error && <p role="alert" className="notice error">{error}</p>}
       {!offline && <div className="menu-gateway"><h2>Bem-vindo ao seu atendimento</h2><p>Acesso à comanda liberado. O cardápio e os pedidos serão disponibilizados na próxima sprint.</p></div>}

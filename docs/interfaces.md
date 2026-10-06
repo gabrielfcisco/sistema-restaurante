@@ -63,3 +63,13 @@ Se a API cair, a interface mostra o erro. A sessão da mesa é revalidada a cada
 
 Cardápio e pedidos permanecem nas próximas sprints. Não há alteração de migrations nesta branch.
 
+
+## Configurar a mesa por QR administrativo
+
+Na tela de identificação do aplicativo Mesa, escaneie o QR físico com conteúdo exato `adm1234`. O formulário mostra o número atual e permite salvar outro número de mesa já cadastrado. Cancelar mantém a configuração anterior. Se houver um cliente identificado, use primeiro Sair / trocar cliente.
+
+O vínculo é persistido na API por dispositivo (hash da credencial), em `dispositivo_mesa`. O número exibido é resolvido para o ID interno da mesa; os dois não precisam ser iguais. As próximas leituras de cartão são validadas contra esse vínculo. A configuração permanece após reiniciar a API ou o aplicativo. O QR administrativo só funciona em dispositivos já autorizados.
+
+Antes de iniciar esta versão, aplique a migration `20261006000000_dispositivo_mesa` com `npm run db:deploy` no banco de desenvolvimento conferido e gere o cliente com `npm run db:generate`. Dispositivos ainda não configurados usam a mesa inicial de `MESA_DEVICE_TOKENS`.
+
+A recepção usa apenas o cartão físico existente: após abrir a comanda, confira cliente, mesa e código do cartão e use Próximo cliente. Não há geração nem reexibição de QR nessa tela.
