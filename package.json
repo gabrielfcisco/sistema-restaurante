@@ -15,10 +15,12 @@
     "setup": "node scripts/setup.mjs",
     "setup:sprint": "node scripts/configure-sprint.mjs",
     "predev": "node scripts/check-dev.mjs",
-    "dev": "concurrently -k -n API,RECEPCAO,MESA \"npm:dev:api\" \"npm:dev:recepcao\" \"npm:dev:mesa\"",
+    "dev": "concurrently -k -n API,RECEPCAO,MESA,COZINHA,BAR \"npm:dev:api\" \"npm:dev:recepcao\" \"npm:dev:mesa\" \"npm:dev:cozinha\" \"npm:dev:bar\"",
     "dev:api": "npm run dev -w @restaurante/api",
     "dev:recepcao": "npm run dev -w @restaurante/recepcao",
     "dev:mesa": "npm run dev -w @restaurante/mesa",
+    "dev:cozinha": "npm run dev -w @restaurante/cozinha",
+    "dev:bar": "npm run dev -w @restaurante/bar",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint apps packages scripts tests --max-warnings=0",
@@ -32,7 +34,9 @@
     "db:studio": "npm run db:studio -w @restaurante/api",
     "db:seed": "npm run db:seed -w @restaurante/api",
     "package:recepcao": "npm run package -w @restaurante/recepcao",
-    "package:mesa": "npm run package -w @restaurante/mesa"
+    "package:mesa": "npm run package -w @restaurante/mesa",
+    "package:cozinha": "npm run package -w @restaurante/cozinha",
+    "package:bar": "npm run package -w @restaurante/bar"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

@@ -15,7 +15,7 @@ npm run setup:sprint
 npm run dev
 ```
 
-`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API e as duas janelas Electron.
+`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API e as quatro janelas Electron: recepção, mesa, cozinha e bar. Cozinha e bar abrem telas iniciais; as filas US-12 e US-13 ainda não estão conectadas.
 
 Ao trocar de branch ou receber alterações de dependências, execute `npm ci` novamente na raiz `sistema-restaurante`. Isso atualiza os vínculos dos pacotes internos, incluindo `@restaurante/desktop`. A inicialização verifica a versão do Node e esse pacote antes de abrir as janelas.
 
@@ -25,6 +25,8 @@ Para executar separadamente, use um terminal para cada comando:
 npm run dev:api
 npm run dev:recepcao
 npm run dev:mesa
+npm run dev:cozinha
+npm run dev:bar
 ```
 
 ## API da sprint 1
@@ -55,6 +57,8 @@ npm run db:seed
 | `npm start -w @restaurante/mesa` | Abre interface compilada no Electron |
 | `npm run package:recepcao` | Gera pasta executável desktop da recepção |
 | `npm run package:mesa` | Gera pasta executável desktop da mesa |
+| `npm run package:cozinha` | Gera pasta executável desktop da cozinha |
+| `npm run package:bar` | Gera pasta executável desktop do bar |
 | `npm run db:generate` | Gera cliente Prisma após mudança de schema |
 | `npm run db:migrate` | Cria/aplica migration em banco de desenvolvimento |
 | `npm run db:studio` | Abre inspeção local do banco |
@@ -70,6 +74,6 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 - [Contratos da API](docs/contratos-api.md)
 - [Modelagem e migration da sprint](docs/banco.md)
 
-`apps/api` contém o backend; `apps/recepcao` e `apps/mesa` são os apps atuais. `packages/ui`, `packages/api-client` e `packages/contracts` são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
+`apps/api` contém o backend; `apps/recepcao`, `apps/mesa`, `apps/cozinha` e `apps/bar` são apps Electron/Vite. Cozinha e bar têm apenas telas placeholder enquanto as rotas da Sprint 2 não forem implementadas. `packages/ui`, `packages/api-client` e `packages/contracts` são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
 
-Próximos apps: garçom, cozinha, bar, caixa e administração. Serão criados em `apps/` quando entrarem nas sprints. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.
+Próximos apps: garçom, caixa e administração. Serão criados em `apps/` quando entrarem nas sprints. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.

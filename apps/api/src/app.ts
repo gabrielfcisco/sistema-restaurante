@@ -9,7 +9,7 @@ import { getPrisma } from './database/prisma';
 
 export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig } = {}) {
   const app = express();
-  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174').split(',').map(s => s.trim());
+  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176').split(',').map(s => s.trim());
   app.disable('x-powered-by');
   app.use(cors({ origin(origin, callback) {
     // Apps desktop empacotados (file://) não enviam cookies ou credenciais.

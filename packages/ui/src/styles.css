@@ -70,6 +70,12 @@ hr { margin: 28px 0; border: 0; border-top: 1px solid #eee5da; }
 .divider { margin-block: 24px; text-align: center; font-size: .8rem; color: #756e64; }
 .camera-preview { width: 100%; aspect-ratio: 4/3; background: #292723; border-radius: 12px; }
 .hidden { display: none; }
+.station-panel { max-width: 760px; margin: 8vh auto; padding: 40px; border: 1px solid #e3dacd; border-radius: 18px; background: #fff; }
+.station-panel h1 { margin-bottom: 12px; }
+.station-panel p { color: #625b51; }
+.station-panel .eyebrow { color: #974011; }
+.station-status { display: flex; align-items: center; gap: 10px; margin-top: 32px; padding-top: 20px; border-top: 1px solid #eee5da; font-size: .9rem; }
+.station-status span { width: 9px; height: 9px; border-radius: 50%; background: #24805a; }
 .table-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 16px; }
 .details { border-top: 1px solid #ddd4c8; padding-top: 16px; }
 .welcome { max-width: 800px; margin: 48px auto; }
@@ -97,3 +103,5 @@ hr { margin: 28px 0; border: 0; border-top: 1px solid #eee5da; }
 .chair.left { left: 1px; }.chair.right { right: 1px; }
 .table-card small { font-size: .65rem; color: #756e64; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (max-width: 600px) { .station-panel { margin: 24px 0; padding: 24px; } }

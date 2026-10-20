@@ -32,6 +32,12 @@ Os pacotes internos exportam TypeScript, compilado pelo Vite/tsup dos consumidor
 | caixa | PC/Electron | pagamentos, encerramento |
 | administracao | PC/Electron | produtos, categorias, relatórios, usuários |
 
+### Preparação da Sprint 2 (US-07–US-13, Grupo 9)
+
+`apps/mesa` consome cardápio e confirma pedidos; cada confirmação cria um Pedido novo na mesma comanda, e só seus itens novos são distribuídos. `apps/cozinha` e `apps/bar` consomem filas por SSE na rede interna, sem login conforme decisão do Grupo 9. Catálogo, confirmação, distribuição por `Produto.setor` e consultas filtradas ficam na API compartilhada. Rotas e gaps estão em `docs/sprint-02.md` e `docs/contratos-api.md`; handlers Sprint 2 ainda não existem. Os workspaces Electron/Vite abrem telas placeholder. Um asset de teste será commitado em `assets/cardapio/` e referenciado por chave relativa persistida em Produto; upload/gestão ficam para sprint futura. Status final e agregação do Pedido ainda precisam de confirmação.
+
+Os novos workspaces seguem package, porta, CORS e Electron dos apps existentes. As rotas de fila são sem login, portanto configurar API e CORS para a rede interna e não expor o serviço publicamente. O bridge permanece restrito e as permissões são negadas por padrão. Os diretórios de screenshot das quatro interfaces são somente referências visuais.
+
 Adicionar pasta com package.json em apps/; npm workspaces a reconhecerá. Reutilizar os pacotes compartilhados, registrar porta de desenvolvimento própria e origem CORS. Só acrescentar ao comando raiz `dev` quando fizer sentido executar junto. A distribuição por apps não é uma barreira de autorização: a API deverá verificar perfil de funcionário e sessão de cliente. Autenticação de funcionários ainda não foi implementada.
 
 ## Android

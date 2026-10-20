@@ -65,3 +65,22 @@ Formato `{ "error": { "code": "CARTAO_EM_USO", "message": "Esta comanda física 
 Rotas técnicas públicas existentes: GET /health (processo), GET /ready (banco, 200/503).
 
 Não há GET /cartoes/disponiveis: a recepção digita o código físico. Cancelamento individual, CRUD de mesas, login individual e demais sprints não foram adicionados.
+
+## Sprint 2 — contratos planejados (US-07 a US-13, Grupo 9)
+
+As rotas abaixo são documentação de preparação; **não estão implementadas**. Critérios, gaps de schema e autorização estão detalhados em `docs/sprint-02.md`. Não publicar handlers até implementar validação e autorização correspondentes.
+
+| História | Método e rota planejada | Permissão | Dados/resultado |
+|---|---|---|---|
+| US-07 | GET `/cardapio/categorias` | Sessão ativa da mesa | Categorias presentes em produtos ativos, para navegação conforme Figma. |
+| US-07 | GET `/cardapio/produtos?categoria=:id` | Sessão ativa da mesa | Produtos ativos da categoria; imagem apontada por chave relativa persistida. |
+| US-08 | GET `/cardapio/produtos/:idProduto` | Sessão ativa da mesa | Nome, descrição, preço e disponibilidade; produto desativado informa indisponibilidade. |
+| US-09/10/11 | POST `/atendimentos/:idComanda/pedidos` | Sessão ativa vinculada à comanda | `{itens:[{idProduto,quantidade}]}` + `Idempotency-Key`; cada confirmação cria pedido novo na mesma comanda, sem reenviar linhas antigas. Servidor recalcula preço e grava pedido/itens por setor atomicamente. |
+| US-12 | GET `/cozinha/itens` | Sem login (painel na rede interna) | Itens COZINHA não entregues (`RECEBIDO`, `EM_PREPARO`, `PRONTO`), com mesa/comanda/horário, ordenados por `Pedido.dataHora`; PRONTO fica visível para concluir entrega. |
+| US-12 | GET `/cozinha/eventos` (SSE) | Sem login (painel na rede interna) | Eventos de itens novos e mudanças de status; GET `/cozinha/itens` fornece snapshot/reconciliação. |
+| US-12 | PATCH `/cozinha/itens/:idItem/status` | Sem login (painel na rede interna) | Avança item COZINHA uma etapa; sequência RECEBIDO → EM_PREPARO → PRONTO → ENTREGUE. |
+| US-13 | GET `/bar/itens` | Sem login (painel na rede interna) | Itens BAR não entregues (`RECEBIDO`, `EM_PREPARO`, `PRONTO`), com mesa/comanda/horário, ordenados por `Pedido.dataHora`; PRONTO fica visível para concluir entrega. |
+| US-13 | GET `/bar/eventos` (SSE) | Sem login (painel na rede interna) | Eventos de itens novos e mudanças de status; GET `/bar/itens` fornece snapshot/reconciliação. |
+| US-13 | PATCH `/bar/itens/:idItem/status` | Sem login (painel na rede interna) | Avança item BAR uma etapa; sequência RECEBIDO → EM_PREPARO → PRONTO → ENTREGUE. |
+
+Itens são roteados pelo `Produto.setor` no servidor: COZINHA ou BAR. Não aceitar `setor` enviado no corpo. Cada confirmação cria um novo Pedido dentro da mesma comanda; itens antigos ficam no histórico/fechamento e nunca são reenviados às filas. Painéis avançam apenas itens do seu setor em sequência e publicam mudanças via SSE. O status agregado do Pedido é o estágio menos avançado de seus itens, recalculado na mesma transação da mudança do item; quando todos estão `ENTREGUE`, o Pedido também fica `ENTREGUE`. Por decisão do Grupo 9, os painéis não exigem login; implantar em rede interna, configurando `HOST` e `CORS_ORIGINS`. GET da fila é o snapshot/reconciliação. Imagem genérica de teste deve ser commitada em `assets/cardapio/` e sua chave relativa persistida em Produto por migration aditiva; upload/admin e imagens reais são futuros.
