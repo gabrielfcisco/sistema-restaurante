@@ -27,6 +27,7 @@ test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessõ
     }
     await connection.query("INSERT INTO cliente (nome, cpf) VALUES ('Cliente legado ficticio', '11144477735')");
     await connection.query(await readFile('apps/api/prisma/migrations/20261003010000_cliente_telefone/migration.sql', 'utf8'));
+    await connection.query(await readFile('apps/api/prisma/migrations/20261006000000_dispositivo_mesa/migration.sql', 'utf8'));
     url.pathname = `/${database}`;
     prisma = new PrismaClient({ adapter: new PrismaMariaDb(url.toString()) });
     const db = prisma;
@@ -37,6 +38,14 @@ test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessõ
     assert.equal((await service.buscarCliente(cliente.cpf)).telefone, '(11) 00000-0000');
     await assert.rejects(service.criarCliente({ nome: 'Sem telefone', cpf: '00000000000', telefone: '' }), { code: 'TELEFONE_INVALIDO' });
     for (let numero = 1; numero <= 5; numero++) await db.mesa.create({ data: { numero } });
+    const dispositivo = 'dispositivo-ficticio-configuravel';
+    assert.deepEqual(await service.mesaDispositivo(dispositivo, 1), { idMesa: 1, numero: 1 });
+    const outraMesa = await db.mesa.create({ data: { numero: 42 } });
+    assert.deepEqual(await service.configurarDispositivo(dispositivo, 42), { idMesa: outraMesa.idMesa, numero: 42 });
+    const reiniciado = new PrismaSprintService(() => db, 600);
+    assert.equal((await reiniciado.mesaDispositivo(dispositivo, 1)).numero, 42);
+    await assert.rejects(service.configurarDispositivo(dispositivo, 999), { code: 'MESA_INEXISTENTE' });
+    assert.equal((await service.mesaDispositivo(dispositivo, 1)).numero, 42);
     await db.mesa.update({ where: { idMesa: 5 }, data: { status: 'MANUTENCAO' } });
     const input = { idCliente: cliente.idCliente, idMesa: 1, codigoCartao: '58324' };
     await service.reservar(1);

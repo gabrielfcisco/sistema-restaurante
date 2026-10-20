@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import QRCode from 'qrcode';
 import { ApiError, createApiClient } from '@restaurante/api-client';
 import { cpfValido, mascararCpf, normalizarCpf, type AtendimentoDto, type ClienteDto, type MesaDto, type MesaDetalheDto } from '@restaurante/contracts';
 import { AppShell, Button } from '@restaurante/ui';
@@ -17,7 +16,6 @@ export function Reception() {
   const [confirmar, setConfirmar] = useState(false);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [status, setStatus] = useState('Carregando mesas…');
   const [atendimento, setAtendimento] = useState<AtendimentoDto | null>(null);
-  const [qr, setQr] = useState('');
   const chave = useRef(crypto.randomUUID());
   const lock = useRef(false);
   const mesa = mesas.find(m => m.idMesa === mesaId);
@@ -44,7 +42,7 @@ export function Reception() {
     catch (e) { setError(message(e)); }
     finally { lock.current = false; setBusy(false); }
   }
-  function alterarCpf(value: string) { setCpf(value); setCliente(null); setNovo(false); setNome(''); setTelefone(''); setAtendimento(null); setQr(''); chave.current = crypto.randomUUID(); }
+  function alterarCpf(value: string) { setCpf(value); setCliente(null); setNovo(false); setNome(''); setTelefone(''); setAtendimento(null); chave.current = crypto.randomUUID(); }
   async function buscar() {
     if (!cpfValido(cpf)) { setError('Informe um CPF válido.'); return; }
     await act(async () => {
@@ -61,26 +59,21 @@ export function Reception() {
       }
     });
   }
-  async function mostrarCodigo(codigo: string) {
-    const image = await QRCode.toDataURL(codigo, { width: 260, margin: 2, errorCorrectionLevel: 'M' });
-    setQr(image);
-  }
   async function abrir() {
     await act(async () => {
       if (!cliente || !mesa || !/^[0-9]{5}$/.test(codigoCartao)) return;
       const result = await api.abrir({ idCliente: cliente.idCliente, idMesa: mesaId, codigoCartao,
         confirmarMesaOcupada: confirmar }, chave.current);
       setAtendimento(result); setStatus('Comanda ' + result.idComanda + ' aberta com sucesso.');
-      // Falha ao renderizar cartão não deve esconder uma abertura já concluída.
-      try { if (result.codigoCartao) await mostrarCodigo(result.codigoCartao); await refresh(); setStatus('Comanda ' + result.idComanda + ' aberta com sucesso.'); }
-      catch (e) { setError('Comanda aberta. ' + message(e) + ' Use Reexibir cartão ou Atualizar mapa.'); }
+      try { await refresh(); setStatus('Comanda ' + result.idComanda + ' aberta com sucesso.'); }
+      catch (e) { setError('Comanda aberta. ' + message(e) + ' Use Atualizar mapa.'); }
     });
   }
   function limpar() {
     alterarCpf(''); setMesaId(0); setCodigoCartao(''); setConfirmar(false); setDetalhe(null); setConfirmarLiberacao(false); setError(''); setStatus('Pronto para o próximo atendimento.');
   }
   return <AppShell title="Recepção">
-    <div className="heading-row"><div><p className="eyebrow">Atendimento • Sprint 01</p><h1>Receber bem começa aqui.</h1><p>Localize o cliente, escolha a mesa e entregue seu cartão.</p></div><Button className="secondary" disabled={busy} onClick={() => void act(refresh)}>Atualizar mapa</Button></div>
+    <div className="heading-row"><div><p className="eyebrow">Atendimento </p><h1>Receber bem começa aqui.</h1><p>Localize o cliente, escolha a mesa e entregue seu cartão.</p></div><Button className="secondary" disabled={busy} onClick={() => void act(refresh)}>Atualizar mapa</Button></div>
     <p role="status" className="notice">{status}</p>{error && <p role="alert" className="notice error">{error}</p>}
     <div className="reception-grid">
       <section className="panel"><p className="eyebrow">01 / Cliente</p><h2>Quem chegou?</h2>
@@ -97,7 +90,7 @@ export function Reception() {
       </section>
       <section className="panel"><p className="eyebrow">02 / Salão</p><h2>Mapa de mesas</h2><div className="legend">{Object.entries(labels).map(([s, label]) => <span key={s}><i className={'dot ' + s.toLowerCase()} />{label}</span>)}</div>
         <div className="table-grid">{mesas.map(m => <button key={m.idMesa} className={'table-card ' + m.status.toLowerCase() + (mesaId === m.idMesa ? ' selected' : '')} aria-pressed={mesaId === m.idMesa} disabled={busy || !!atendimento || m.status === 'MANUTENCAO'} onClick={() => { setMesaId(m.idMesa); setConfirmar(false); setDetalhe(null); setConfirmarLiberacao(false); chave.current = crypto.randomUUID(); }}>
-          <span className="table-number">Mesa {String(m.numero).padStart(2, '0')}</span><span>{labels[m.status]}</span><small>{m.comandasAtivas} {m.comandasAtivas === 1 ? 'comanda ativa' : 'comandas ativas'}</small>
+          <span className="table-drawing"><span className="chair top" aria-hidden="true" /><span className="chair right" aria-hidden="true" /><span className="chair bottom" aria-hidden="true" /><span className="chair left" aria-hidden="true" /><span className="table-top"><span className="table-number"><span className="sr-only">Mesa </span>{String(m.numero).padStart(2, '0')}</span><span className="table-status">{labels[m.status]}</span></span></span><small>{m.comandasAtivas} {m.comandasAtivas === 1 ? 'comanda ativa' : 'comandas ativas'}</small>
         </button>)}</div>
         {!mesas.length && <p>Nenhuma mesa carregada. Confira a conexão e o seed do banco.</p>}
         <p className="muted">Mesas livres e reservadas podem receber clientes. Mesas ocupadas exigem confirmação; manutenção bloqueia o atendimento.</p>
@@ -111,8 +104,7 @@ export function Reception() {
       </section>
     </div>
     {atendimento && <section className="panel success"><div className="heading-row"><div><p className="eyebrow">Atendimento aberto</p><h2>Comanda #{atendimento.idComanda}</h2><p>{cliente?.nome} · Mesa {mesa?.numero} · Status aberta</p></div><Button onClick={limpar} disabled={busy}>Próximo cliente</Button></div>
-      {atendimento.codigoCartao && <div className="card-identification">{qr && <img src={qr} alt={'QR Code do cartão ' + atendimento.codigoCartao} width={260} height={260} />}<div><h3>Cartão {atendimento.codigoCartao}</h3><p>Escaneie no aplicativo da mesa ou digite o código:</p><code className="access-code">{atendimento.codigoCartao}</code><p className="muted">Este código é fixo do cartão. Só o atendimento ativo permite acesso.</p></div></div>}
-      <Button className="secondary" disabled={busy || !atendimento.codigoCartao} onClick={() => void act(() => mostrarCodigo(atendimento.codigoCartao!))}>Reexibir cartão</Button>
+      {atendimento.codigoCartao && <p>Cartão físico <strong>{atendimento.codigoCartao}</strong> vinculado. Confira os dados e clique em <strong>Próximo cliente</strong> para continuar.</p>}
     </section>}
   </AppShell>;
 }

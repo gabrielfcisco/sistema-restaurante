@@ -5,7 +5,7 @@ const devUrl = process.env.ELECTRON_RENDERER_URL;
 if (devUrl && (app.isPackaged || new URL(devUrl).origin !== 'http://localhost:5173')) throw new Error('Origem de desenvolvimento inválida.');
 const entry = new URL('../dist/index.html', import.meta.url);
 async function createWindow() {
-  const window = new BrowserWindow({ width: 1440, height: 900, minWidth: 640, minHeight: 480, title: 'Restaurante — Recepção', autoHideMenuBar: true,
+  const window = new BrowserWindow({ width: 1920, height: 1080, minWidth: 640, minHeight: 480, title: 'Restaurante — Recepção', autoHideMenuBar: true,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)) } });
   await installApiBridge(window, 'recepcao', new URL('../', import.meta.url), url => devUrl ? new URL(url).origin === new URL(devUrl).origin : url === entry.href);
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
