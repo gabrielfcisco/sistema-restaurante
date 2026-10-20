@@ -21,6 +21,8 @@ enum SetorProduto {
 enum StatusMesa {
   LIVRE
   OCUPADA
+  RESERVADA
+  MANUTENCAO
 }
 
 enum StatusComanda {
@@ -42,6 +44,7 @@ model Cliente {
   idCliente Int       @id @default(autoincrement()) @map("id_cliente") @db.UnsignedInt
   cpf       String    @unique(map: "uq_cliente_cpf") @db.Char(11)
   nome      String    @db.VarChar(120)
+  telefone  String?   @db.VarChar(32)
   comandas  Comanda[]
 
   @@map("cliente")
@@ -71,7 +74,13 @@ model Produto {
 
 model Comanda {
   idComanda      Int           @id @default(autoincrement()) @map("id_comanda") @db.UnsignedInt
-  qrCode         String        @unique(map: "uq_comanda_qr_code") @map("qr_code") @db.VarChar(255)
+  qrCode         String?       @unique(map: "uq_comanda_qr_code") @map("qr_code") @db.VarChar(255)
+  idCartao       Int?          @map("id_cartao") @db.UnsignedInt
+  chaveAbertura  String?       @unique(map: "uq_comanda_chave_abertura") @map("chave_abertura") @db.VarChar(128)
+  hashAbertura   String?       @map("hash_abertura") @db.Char(64)
+  cartao         Cartao?       @relation(fields: [idCartao], references: [idCartao], onDelete: Restrict)
+  vinculoAtivo   VinculoCartao?
+  sessoes        SessaoMesa[]
   status         StatusComanda @default(ABERTA)
   dataAbertura   DateTime      @default(now()) @map("data_abertura") @db.DateTime(0)
   dataFechamento DateTime?     @map("data_fechamento") @db.DateTime(0)
@@ -85,6 +94,32 @@ model Comanda {
   @@index([idMesa], map: "ix_comanda_mesa")
   @@index([status], map: "ix_comanda_status")
   @@map("comanda")
+}
+
+model Cartao {
+  idCartao Int @id @default(autoincrement()) @map("id_cartao") @db.UnsignedInt
+  codigo String @unique(map: "uq_cartao_codigo") @db.Char(5)
+  comandas Comanda[]
+  vinculoAtivo VinculoCartao?
+  @@map("cartao")
+}
+
+model VinculoCartao {
+  idCartao Int @id @map("id_cartao") @db.UnsignedInt
+  idComanda Int @unique(map: "uq_vinculo_comanda") @map("id_comanda") @db.UnsignedInt
+  cartao Cartao @relation(fields: [idCartao], references: [idCartao], onDelete: Restrict)
+  comanda Comanda @relation(fields: [idComanda], references: [idComanda], onDelete: Restrict)
+  @@map("vinculo_cartao")
+}
+
+model SessaoMesa {
+  tokenHash String @id @map("token_hash") @db.Char(64)
+  idComanda Int @map("id_comanda") @db.UnsignedInt
+  expiraEm DateTime @map("expira_em") @db.DateTime(3)
+  revogadaEm DateTime? @map("revogada_em") @db.DateTime(3)
+  comanda Comanda @relation(fields: [idComanda], references: [idComanda], onDelete: Restrict)
+  @@index([idComanda])
+  @@map("sessao_mesa")
 }
 
 model Pedido {

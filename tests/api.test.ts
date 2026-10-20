@@ -28,7 +28,7 @@ test('readiness verifica dependência e rotas inexistentes não simulam negócio
   await withApi(async () => { calls++; }, async url => {
     assert.equal((await fetch(url + '/ready')).status, 200);
     assert.equal(calls, 1);
-    assert.equal((await fetch(url + '/mesas')).status, 404);
+    assert.equal((await fetch(url + '/rota-inexistente')).status, 404);
     const invalid = await fetch(url + '/clientes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' });
     assert.equal(invalid.status, 400);
   });

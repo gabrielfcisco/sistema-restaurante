@@ -1,20 +1,28 @@
-# Banco existente e próxima migration
+# Banco — Sprint 01
 
-O schema e a migration inicial foram preservados em `apps/api/prisma`. Só mudou o destino do cliente gerado para `apps/api/src/generated/prisma`. Nenhum banco foi alterado pela reorganização.
+MySQL 8 / Prisma. A migration inicial foi preservada. A nova `20261003000000_sprint01` acrescenta:
 
-O schema atual já contém Cliente, Mesa, Produto, Comanda, Pedido e ItemPedido. Mesa possui relação de um para muitos com Comanda, compatível com comandas individuais na mesma mesa.
+- Estados RESERVADA e MANUTENCAO em mesa.
+- Cartao com ID sequencial e código físico único de cinco dígitos.
+- Referência opcional de Comanda a Cartao para preservar histórico.
+- VinculoCartao: chave primária idCartao e idComanda único, impedindo uso ativo simultâneo.
+- Chave de abertura única e hash dos parâmetros em Comanda para idempotência.
+- SessaoMesa com hash do token, expiração e revogação.
 
-## Trabalho da sprint
+Abertura bloqueia a linha da mesa e do cartão, e grava cartão/comanda/vínculo/estado na mesma transação. Liberação bloqueia a mesa, encerra todas as comandas ativas, revoga sessões e remove vínculos ativos. Deadlocks e colisões transitórias de criação são repetidos até duas vezes; conflitos persistentes retornam erro. Cadastro de CPF também tem unicidade no banco.
 
-1. Criar entidade Cartao com número de exibição e identificador QR fixo não previsível.
-2. Relacionar Comanda ao cartão para preservar histórico de utilizações.
-3. Representar ocupação ativa do cartão com restrição única no banco (por exemplo, tabela de vínculo ativo com idCartao único). Apenas uma consulta antes do insert não protege contra concorrência.
-4. Realizar abertura, vínculo do cartão e atualização de mesa numa transação. Manter reserva exclusiva do cartão até encerrar/devolver conforme fluxo futuro.
-5. Acrescentar estados RESERVADA e MANUTENCAO da mesa em migration incremental, mantendo dados existentes.
-6. Acrescentar dados fictícios de cartões no seed após a modelagem.
+## Compatibilidade com registros anteriores
 
-`Comanda.qrCode` ainda é obrigatório e único no schema histórico. Não simplesmente reutilizar o mesmo QR em múltiplas comandas: isso conflita com a restrição. Planejar transição/backfill para Cartao e, só após compatibilização dos dados, remover a dependência antiga em migration revisada. Não editar a migration inicial já versionada/aplicada.
+Comanda.qrCode passa a aceitar nulo; valores existentes e a unicidade histórica são preservados. Não gerar outro QR por atendimento. As novas aberturas usam Cartao.codigo e deixam qrCode nulo.
 
-Não há necessidade de preencher pedidos, pagamentos ou relatórios nesta sprint. O banco não tem entidades de chamados, funcionários, pagamentos ou categorias dinâmicas; esses ajustes entram quando os respectivos fluxos forem programados.
+A migration não converte automaticamente QRs antigos em cartões: não é possível presumir que sejam códigos físicos válidos de cinco dígitos. Registros antigos continuam consultáveis no detalhe da mesa, com codigoCartao nulo, e podem ser encerrados pela liberação. Não abrem novas sessões pelo QR legado. Antes de migrar um banco com atendimentos ativos, revisar e planejar a associação explícita aos cartões físicos; não há backfill automático nem exclusão de histórico.
 
-Antes de aplicar qualquer migration em banco com dados, conferir destino e revisar SQL/backfill. Banco local vazio pode ser preparado com db:deploy; um banco existente exige conferir o histórico de migrations.
+## Aplicação e testes
+
+Não aplicar migrations a banco desconhecido. Conferir destino e revisar SQL antes de `npm run db:deploy`. Nenhuma migration é aplicada pelo servidor ao iniciar. O seed continua criando somente mesas fictícias; cartões são cadastrados no primeiro atendimento.
+
+`npm test` executa testes HTTP e de validação sem banco. `RUN_MYSQL_TESTS=1 npm test` habilita o teste de integração (no PowerShell: `$env:RUN_MYSQL_TESTS='1'; npm test`). Usa credenciais locais de apps/api/.env, ou TEST_DATABASE_URL, para criar um banco efêmero de nome aleatório sprint01_test_*. Aplica as migrations apenas nele, testa concorrência, rollback, histórico e sessões e o remove ao terminar. Requer MySQL local e permissão para criar/remover esse banco; nunca aplica migrations ao banco indicado na URL. Em interrupção abrupta pode sobrar um banco com esse prefixo, a ser conferido antes de remoção manual.
+
+## Telefone obrigatório — US-01
+
+A migration incremental 20261003010000_cliente_telefone adiciona telefone VARCHAR(32). Novos cadastros pela API exigem nome, CPF e telefone. A coluna aceita NULL apenas para preservar registros anteriores sem inventar números; o serviço também rejeita telefone ausente ou vazio. Preenchimento de dados legados deve ser feito com informações reais fornecidas pelo cliente. As migrations anteriores permanecem intactas.

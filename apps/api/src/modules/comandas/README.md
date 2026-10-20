@@ -1,3 +1,3 @@
 # comandas
 
-Módulo reservado para a sprint 01. Rotas, validações e serviços serão implementados aqui. Consulte docs/contratos-api.md e docs/sprint-01.md. Não há endpoints de negócio implementados nesta base.
+Abertura idempotente e encerramento coletivo pela liberação da mesa implementados em ../sprint-service.ts. As transações preservam histórico e vinculam cartões físicos reutilizáveis. Consulte docs/contratos-api.md.
