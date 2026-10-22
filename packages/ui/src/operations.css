@@ -1,0 +1,39 @@
+/* Painéis US-12/13: regras isoladas das telas existentes de recepção e mesa. */
+.operational-board { --operation-orange: #ff6a19; color: #26231f; background: #f8f5ed; min-height: 100vh; font-family: Arial, system-ui, sans-serif; }
+.operational-board .operation-header { min-height: 72px; padding: 18px 28px; background: #25221e; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.operation-brand { display: flex; align-items: center; gap: 12px; }
+.operational-board .operation-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: var(--operation-orange); color: white; font-weight: 700; font-size: 18px; }
+.operational-board h1 { color: white; font-size: 23px; margin: 0; letter-spacing: -.025em; }
+.operational-board main { max-width: none; margin: 0; padding: 26px 28px 28px; }
+.connection-badge, .sector-badge, .column-count, .item-status, .item-overdue { border-radius: 999px; display: inline-block; padding: 6px 11px; font-size: 12px; font-weight: 700; }
+.connection-badge, .sector-badge, .column-count { color: #287dbb; background: #eaf4fc; }
+.connection-badge.reconectando, .connection-badge.conectando { color: #986a13; background: #fff2d0; }
+.operation-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+.operation-subtitle { color: #77736b; font-size: 13px; }
+.operation-controls { display: flex; gap: 10px; margin-left: auto; }
+.operational-board select { width: auto; min-height: 36px; padding: 6px 26px 6px 10px; font-size: 13px; border: 1px solid #e3dfd7; border-radius: 8px; }
+.operational-board .operation-refresh { min-height: 36px; padding: 7px 12px; font-size: 13px; background: white; color: #5b534a; border: 1px solid #e3dfd7; border-radius: 8px; }
+.operation-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.operation-columns.filtered { grid-template-columns: minmax(0, 1fr); }
+.operation-column { background: white; border-radius: 14px; padding: 16px; min-height: calc(100vh - 192px); }
+.operation-column.pronto { background: #e6f5ed; }
+.column-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.operational-board h2 { font-size: 19px; margin: 0; letter-spacing: -.025em; }
+.column-count { font-size: 11px; white-space: nowrap; }
+.pronto .column-count { background: transparent; color: #258d60; }
+.operation-card { background: white; padding: 18px; border-radius: 13px; margin-bottom: 14px; box-shadow: 0 7px 24px #2e291608; overflow-wrap: anywhere; }
+.operational-board h3 { font-weight: 500; font-size: 17px; line-height: 1.4; margin: 0 0 12px; }
+.operational-board .operation-meta { font-size: 12px; line-height: 1.6; color: #756f67; margin: 3px 0; max-width: none; }
+.operation-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.item-status.recebido { background: #eaf4fc; color: #287dbb; }
+.item-status.em_preparo { background: #fff3d8; color: #a46600; }
+.item-status.pronto { background: #e6f5ed; color: #247b54; }
+.item-overdue { color: #c9342e; background: #fde9e7; }
+.operational-board .operation-action { min-height: 38px; margin-top: 12px; padding: 10px 14px; font-size: 12px; border-radius: 9px; background: var(--operation-orange); color: white; }
+.operational-board .operation-action:disabled { opacity: .5; cursor: not-allowed; }
+.operational-board .operation-observation { font-size: 13px; color: #5e5143; background: #fbf6eb; padding: 8px 10px; border-radius: 6px; margin: 10px 0; }
+.operational-board .operation-empty { padding: 20px 8px; color: #817b72; font-size: 13px; text-align: center; }
+.operational-board .operation-notice { max-width: none; padding: 12px 16px; background: #fff2d8; color: #815a18; border-radius: 8px; margin: 0 0 18px; font-size: 14px; }
+.operational-board .operation-error { background: #fde9e7; color: #a32b27; }
+@media (max-width: 850px) { .operational-board main { padding: 18px 14px; }.operation-columns { gap: 12px; }.operation-column { padding: 12px; }.operation-card { padding: 12px; }.operational-board h2 { font-size: 16px; } }
+@media (max-width: 640px) { .operation-columns { grid-template-columns: 1fr; }.operation-column { min-height: 160px; }.operation-controls { margin-left: 0; }.operational-board .operation-header { padding: 16px; } }

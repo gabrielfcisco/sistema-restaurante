@@ -34,3 +34,16 @@ export function cpfValido(value: string) {
   return true;
 }
 export function mascararCpf(cpf: string) { return '***.***.' + cpf.slice(6, 9) + '-' + cpf.slice(9); }
+
+export type SetorOperacional = 'COZINHA' | 'BAR';
+export const STATUS_PREPARO = ['RECEBIDO', 'EM_PREPARO', 'PRONTO', 'ENTREGUE'] as const;
+export type StatusPreparo = typeof STATUS_PREPARO[number];
+export type StatusFila = Exclude<StatusPreparo, 'ENTREGUE'>;
+export interface ItemFilaDto {
+  idItem: number; idPedido: number; idComanda: number; idMesa: number; numeroMesa: number;
+  nomeProduto: string; quantidade: number; observacao: string | null; setor: SetorOperacional;
+  status: StatusFila; dataHora: string;
+}
+export interface AlterarStatusItemInput { statusAtual: StatusFila; status: StatusPreparo }
+export interface StatusItemDto { idItem: number; status: StatusPreparo; statusPedido: StatusPreparo }
+export interface FilaEventoDto { itens: ItemFilaDto[] }

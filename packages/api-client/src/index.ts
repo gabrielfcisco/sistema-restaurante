@@ -1,9 +1,9 @@
 
-import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto } from '@restaurante/contracts';
+import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto } from '@restaurante/contracts';
 export interface ApiRequest { path: string; method: string; body?: unknown; sessionToken?: string; idempotencyKey?: string }
 export interface ApiResult { status: number; data?: unknown }
 export type ApiTransport = (request: ApiRequest) => Promise<ApiResult>;
-declare global { interface Window { restaurante?: { request: ApiTransport; mesaId?: number } } }
+declare global { interface Window { restaurante?: { request: ApiTransport; mesaId?: number; painel?: () => Promise<{ apiUrl: string }> } } }
 export class ApiError extends Error {
   constructor(public code: string, message: string, public status = 0) { super(message); }
 }
@@ -29,6 +29,8 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     return result.data as T;
   }
   return {
+    fila: (setor: SetorOperacional) => request<ItemFilaDto[]>('/' + setor.toLowerCase() + '/itens'),
+    avancarStatus: (setor: SetorOperacional, idItem: number, input: AlterarStatusItemInput) => request<StatusItemDto>('/' + setor.toLowerCase() + '/itens/' + idItem + '/status', 'PATCH', input),
     mesaDispositivo: () => request<{ idMesa: number; numero: number }>('/acessos/dispositivo'),
     configurarDispositivo: (numero: number, codigoAdmin: string) => request<{ idMesa: number; numero: number }>('/acessos/dispositivo', 'POST', { numero, codigoAdmin }),
     health: () => request<HealthResponse>('/health'),

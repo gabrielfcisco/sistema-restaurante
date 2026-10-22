@@ -1,0 +1,4 @@
+-- Evolução aditiva para US-12/13. Preserva PENDENTE e o histórico existente.
+ALTER TABLE item_pedido
+  MODIFY status ENUM('PENDENTE','RECEBIDO','EM_PREPARO','PRONTO','ENTREGUE') NOT NULL DEFAULT 'RECEBIDO';
+ALTER TABLE pedido ALTER COLUMN status SET DEFAULT 'RECEBIDO';

@@ -1,6 +1,6 @@
 # Sistema de restaurante — Grupo 9
 
-Monorepo com API Node/Express e aplicativos React/Electron separados. Sprint atual: US-01 a US-06. Recepção no computador; mesa no computador nesta sprint, com interface preparada para futura adaptação Android via Capacitor.
+Monorepo com API Node/Express e aplicativos React/Electron separados. Sprint 2: os painéis da cozinha (US-12) e do bar (US-13) estão implementados sobre a base da Sprint 1. Mesa, recepção, cozinha e bar compartilham a mesma API e o banco MySQL.
 
 ## Começar
 
@@ -15,7 +15,7 @@ npm run setup:sprint
 npm run dev
 ```
 
-`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API e as quatro janelas Electron: recepção, mesa, cozinha e bar. Cozinha e bar abrem telas iniciais; as filas US-12 e US-13 ainda não estão conectadas.
+`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API e as quatro janelas Electron. Cozinha e bar consultam suas filas sem login e atualizam por SSE; confira [execução, migration e testes das US-12/13](docs/us-12-us-13.md).
 
 Ao trocar de branch ou receber alterações de dependências, execute `npm ci` novamente na raiz `sistema-restaurante`. Isso atualiza os vínculos dos pacotes internos, incluindo `@restaurante/desktop`. A inicialização verifica a versão do Node e esse pacote antes de abrir as janelas.
 
@@ -68,12 +68,13 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 ## Organização e continuidade
 
 - [Arquitetura e expansão](docs/arquitetura.md)
+- [US-12 e US-13: cozinha e bar](docs/us-12-us-13.md)
 - [Interfaces, configuração desktop e demonstração da sprint](docs/interfaces.md)
 - [Ambiente e dois computadores](docs/ambiente.md)
 - [Sprint 01 e divisão entre cinco integrantes](docs/sprint-01.md)
 - [Contratos da API](docs/contratos-api.md)
 - [Modelagem e migration da sprint](docs/banco.md)
 
-`apps/api` contém o backend; `apps/recepcao`, `apps/mesa`, `apps/cozinha` e `apps/bar` são apps Electron/Vite. Cozinha e bar têm apenas telas placeholder enquanto as rotas da Sprint 2 não forem implementadas. `packages/ui`, `packages/api-client` e `packages/contracts` são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
+`apps/api` contém o backend único. `apps/cozinha` e `apps/bar` reutilizam o painel operacional de `packages/ui`, com filas e alterações separadas por setor no servidor. `packages/api-client` e `packages/contracts` também são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
 
 Próximos apps: garçom, caixa e administração. Serão criados em `apps/` quando entrarem nas sprints. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.

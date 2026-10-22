@@ -13,6 +13,7 @@
     "package": "npm run build && electron-builder --dir"
   },
   "dependencies": {
+    "@restaurante/api-client": "0.1.0",
     "@restaurante/desktop": "0.1.0",
     "@restaurante/ui": "0.1.0",
     "react": "^19.2.8",
