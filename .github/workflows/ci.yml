@@ -1,0 +1,41 @@
+name: Verificação da sprint
+
+on:
+  pull_request:
+    branches: [sprint-02, main]
+  push:
+    branches: [codex/us-12-us-13-paineis, sprint-02]
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Lint, tipos, testes MySQL e builds
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-local-only
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_DATABASE: gerenciamento_restaurante
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pci-local-only"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      RUN_MYSQL_TESTS: '1'
+      TEST_DATABASE_URL: mysql://root:ci-local-only@127.0.0.1:3306/gerenciamento_restaurante
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run setup
+      - run: npm run check

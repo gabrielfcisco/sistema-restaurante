@@ -6,6 +6,10 @@ import mariadb from 'mariadb';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../apps/api/src/generated/prisma/client';
 import { PrismaOperacaoService } from '../apps/api/src/modules/operacao/service';
+import { createApp } from '../apps/api/src/app';
+import { once } from 'node:events';
+import type { AddressInfo } from 'node:net';
+import type { ItemFilaDto } from '@restaurante/contracts';
 test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e rollback', { skip: process.env.RUN_MYSQL_TESTS !== '1' }, async () => {
   assert.ok(process.env.TEST_DATABASE_URL, 'Informe TEST_DATABASE_URL explicitamente para o banco local de testes.');
   const url = new URL(process.env.TEST_DATABASE_URL);
@@ -73,6 +77,54 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
     assert.equal((await service.listar('COZINHA')).length, 0);
     await assert.rejects(service.avancar('COZINHA', foodOld.idItem, { statusAtual: 'RECEBIDO', status: 'EM_PREPARO' }), { code: 'ATENDIMENTO_ENCERRADO' });
     assert.equal(await db.itemPedido.count(), 4);
+    // Contrato com US-11: um produtor persiste um novo pedido enquanto os dois
+    // painéis estão conectados. O backend real distribui somente as novas linhas.
+    const server = createApp(async () => {}, { operacao: service, filaIntervalMs: 30 }).listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const base = 'http://127.0.0.1:' + (server.address() as AddressInfo).port + '/api';
+    const abort = new AbortController();
+    const streams: ReadableStreamDefaultReader<Uint8Array>[] = [];
+    async function connect(setor: string) {
+      const response = await fetch(base + '/' + setor + '/eventos', { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(8000)]) });
+      assert.equal(response.status, 200);
+      const reader = response.body!.getReader(), decoder = new TextDecoder();
+      streams.push(reader);
+      let buffer = '';
+      return async (): Promise<ItemFilaDto[]> => {
+        for (;;) {
+          let boundary: number;
+          while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+            const frame = buffer.slice(0, boundary); buffer = buffer.slice(boundary + 2);
+            if (frame.includes('event: fila')) return JSON.parse(frame.split('\n').find(l => l.startsWith('data: '))!.slice(6)).itens;
+          }
+          const data = await reader.read(); assert.equal(data.done, false);
+          buffer += decoder.decode(data.value, { stream: true });
+        }
+      };
+    }
+    try {
+      const nextKitchen = await connect('cozinha'), nextBar = await connect('bar');
+      assert.deepEqual(await nextKitchen(), []); assert.deepEqual(await nextBar(), []);
+      const atendimento = await db.comanda.create({ data: { idCliente: cliente.idCliente, idMesa: mesa.idMesa } });
+      const received = await db.pedido.create({ data: { idComanda: atendimento.idComanda, dataHora: new Date(),
+        itens: { create: [{ idProduto: food.idProduto, quantidade: 1 }, { idProduto: drink.idProduto, quantidade: 2 }] } }, include: { itens: true } });
+      const receivedKitchen = await nextKitchen(), receivedBar = await nextBar();
+      assert.equal(receivedKitchen.length, 1); assert.equal(receivedBar.length, 1);
+      assert.equal(receivedKitchen[0].idPedido, received.idPedido); assert.equal(receivedBar[0].idPedido, received.idPedido);
+      assert.equal(receivedKitchen[0].setor, 'COZINHA'); assert.equal(receivedBar[0].setor, 'BAR');
+      assert.equal(receivedKitchen[0].nomeProduto, food.nome); assert.equal(receivedBar[0].nomeProduto, drink.nome);
+      const patch = await fetch(base + '/cozinha/itens/' + receivedKitchen[0].idItem + '/status', { method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusAtual: 'RECEBIDO', status: 'EM_PREPARO' }) });
+      assert.equal(patch.status, 200);
+      const updatedKitchen = await nextKitchen();
+      assert.equal(updatedKitchen.length, 1); assert.equal(updatedKitchen[0].status, 'EM_PREPARO');
+      assert.equal((await service.listar('BAR'))[0].status, 'RECEBIDO');
+      assert.equal((await db.pedido.findUniqueOrThrow({ where: { idPedido: received.idPedido } })).status, 'RECEBIDO');
+    } finally {
+      abort.abort();
+      await Promise.all(streams.map(reader => reader.cancel().catch(() => {})));
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
   } finally {
     await db?.$disconnect();
     if (created) await connection.query('DROP DATABASE ' + database);
