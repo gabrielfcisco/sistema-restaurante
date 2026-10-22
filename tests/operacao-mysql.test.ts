@@ -10,13 +10,14 @@ import { createApp } from '../apps/api/src/app';
 import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import type { ItemFilaDto } from '@restaurante/contracts';
+import { mysqlTestConfig } from './helpers/mysql';
 test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e rollback', { skip: process.env.RUN_MYSQL_TESTS !== '1' }, async () => {
   assert.ok(process.env.TEST_DATABASE_URL, 'Informe TEST_DATABASE_URL explicitamente para o banco local de testes.');
   const url = new URL(process.env.TEST_DATABASE_URL);
   assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(url.hostname));
   const database = 'operacao_test_' + randomBytes(8).toString('hex');
   assert.match(database, /^operacao_test_[a-f0-9]{16}$/);
-  const connection = await mariadb.createConnection({ host: url.hostname, port: Number(url.port || 3306), user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), multipleStatements: true });
+  const connection = await mariadb.createConnection({ ...mysqlTestConfig(url), multipleStatements: true });
   let created = false, db: PrismaClient | undefined;
   try {
     await connection.query('CREATE DATABASE ' + database); created = true;
@@ -25,7 +26,7 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
     for (const name of (await readdir(directory, { withFileTypes: true })).filter(d => d.isDirectory()).map(d => d.name).sort())
       await connection.query(await readFile(directory + '/' + name + '/migration.sql', 'utf8'));
     url.pathname = '/' + database;
-    db = new PrismaClient({ adapter: new PrismaMariaDb(url.toString()) });
+    db = new PrismaClient({ adapter: new PrismaMariaDb(mysqlTestConfig(url, true)) });
     const client = db, service = new PrismaOperacaoService(() => client);
     const cliente = await db.cliente.create({ data: { nome: 'Cliente Fictício', cpf: '12345678909', telefone: '(11) 00000-0000' } });
     const mesa = await db.mesa.create({ data: { numero: 8, status: 'OCUPADA' } });
