@@ -1,5 +1,7 @@
 # Contratos da API — Sprint 01
 
+As rotas operacionais das US-12/13 estão implementadas e documentadas em [cozinha e bar](us-12-us-13.md): GET de itens, GET de eventos SSE e PATCH de status por setor. As demais rotas da Sprint 2 continuam planejadas.
+
 Base `/api`, JSON. Rotas organizadas em `apps/api/src/modules/{clientes,mesas,comandas,acessos}/routes.ts`, registradas por `sprint-routes.ts`. Autorização compartilhada em `autorizacao.ts` e transações em `sprint-service.ts`; DTOs em `packages/contracts/src/index.ts`. Não inclui interfaces, leitura da câmera, pedidos ou pagamento.
 
 ## Configuração e autorização

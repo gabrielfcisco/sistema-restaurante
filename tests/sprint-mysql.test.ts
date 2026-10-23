@@ -7,6 +7,7 @@ import { parse } from 'dotenv';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../apps/api/src/generated/prisma/client';
 import { PrismaSprintService, hash } from '../apps/api/src/modules/sprint-service';
+import { mysqlTestConfig } from './helpers/mysql';
 
 // Opt-in: cria e remove SOMENTE um banco efêmero local; nunca aplica migrations ao banco configurado.
 test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessões', { skip: process.env.RUN_MYSQL_TESTS !== '1' }, async () => {
@@ -15,8 +16,7 @@ test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessõ
   assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(url.hostname), 'Teste permitido somente em MySQL local.');
   const database = `sprint01_test_${randomBytes(8).toString('hex')}`;
   assert.match(database, /^sprint01_test_[a-f0-9]{16}$/);
-  const connection = await mariadb.createConnection({ host: url.hostname, port: Number(url.port || 3306),
-    user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), multipleStatements: true });
+  const connection = await mariadb.createConnection({ ...mysqlTestConfig(url), multipleStatements: true });
   let prisma: PrismaClient | undefined;
   let created = false;
   try {
@@ -29,7 +29,7 @@ test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessõ
     await connection.query(await readFile('apps/api/prisma/migrations/20261003010000_cliente_telefone/migration.sql', 'utf8'));
     await connection.query(await readFile('apps/api/prisma/migrations/20261006000000_dispositivo_mesa/migration.sql', 'utf8'));
     url.pathname = `/${database}`;
-    prisma = new PrismaClient({ adapter: new PrismaMariaDb(url.toString()) });
+    prisma = new PrismaClient({ adapter: new PrismaMariaDb(mysqlTestConfig(url, true)) });
     const db = prisma;
     const service = new PrismaSprintService(() => db, 600);
     const cliente = await service.criarCliente({ nome: 'Cliente fictício', cpf: '12345678909', telefone: '(11) 00000-0000' });
