@@ -27,9 +27,9 @@ export function createApp(checkDatabase: () => Promise<void>, options: { service
     catch { response.status(503).json({ error: { code: 'DATABASE_UNAVAILABLE', message: 'Banco de dados indisponível.' } }); }
   });
   const access = options.access ?? accessConfig();
-  app.use('/api', sprintRoutes(options.service ?? new PrismaSprintService(getPrisma, access.sessionSeconds), access));
   const operacao = options.operacao ?? new PrismaOperacaoService(getPrisma);
   const feed = new FilaFeed(operacao, options.filaIntervalMs);
+  app.use('/api', sprintRoutes(options.service ?? new PrismaSprintService(getPrisma, access.sessionSeconds), access, feed));
   app.use('/api/cozinha', operacaoRoutes('COZINHA', operacao, feed));
   app.use('/api/bar', operacaoRoutes('BAR', operacao, feed));
   app.use((_request, response) => {

@@ -1,5 +1,5 @@
 
-import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto } from '@restaurante/contracts';
+import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio } from '@restaurante/contracts';
 export interface ApiRequest { path: string; method: string; body?: unknown; sessionToken?: string; idempotencyKey?: string }
 export interface ApiResult { status: number; data?: unknown }
 export type ApiTransport = (request: ApiRequest) => Promise<ApiResult>;
@@ -43,6 +43,10 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     abrir: (input: AbrirAtendimentoInput, key: string) => request<AtendimentoDto>('/atendimentos', 'POST', input, undefined, key),
     acessar: (codigoCartao: string) => request<SessaoMesaDto>('/acessos/mesa', 'POST', { codigoCartao }),
     sessao: (token: string) => request<AtendimentoMesaDto>('/acessos/mesa', 'GET', undefined, token),
-    sair: (token: string) => request<void>('/acessos/mesa', 'DELETE', undefined, token)
+    sair: (token: string) => request<void>('/acessos/mesa', 'DELETE', undefined, token),
+    categoriasCardapio: (token: string) => request<CategoriaCardapio[]>('/cardapio/categorias', 'GET', undefined, token),
+    produtosCardapio: (token: string, categoria?: CategoriaCardapio) => request<ProdutoResumoDto[]>('/cardapio/produtos' + (categoria ? '?categoria=' + categoria : ''), 'GET', undefined, token),
+    detalheProduto: (token: string, idProduto: number) => request<ProdutoResumoDto>('/cardapio/produtos/' + idProduto, 'GET', undefined, token),
+    confirmarPedido: (idComanda: number, input: CriarPedidoInput, token: string, key: string) => request<PedidoConfirmadoDto>('/atendimentos/' + idComanda + '/pedidos', 'POST', input, token, key)
   };
 }

@@ -144,3 +144,57 @@ test('QR administrativo altera a mesa validada, exige dispositivo e rejeita núm
     }
   });
 });
+
+test('US-10/11: confirmação de pedido exige sessão, chave de idempotência, itens válidos e recalcula totais e setores', async () => {
+  let confirmacoes = 0;
+  const sessaoToken = 'sessao-mesa-valida-00000000000000';
+  await http(async url => {
+    assert.equal((await fetch(url + '/atendimentos/1/pedidos', { method: 'POST' })).status, 401);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [] }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' })).status, 400);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [{ idProduto: 1, quantidade: 0 }] }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' })).status, 400);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [{ idProduto: 1, quantidade: -2 }] }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' })).status, 400);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [{ idProduto: 1, quantidade: 1.5 }] }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' })).status, 400);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [{ idProduto: 1, quantidade: 1 }] }, sessaoToken)).status, 400);
+    assert.equal(confirmacoes, 0);
+
+    const created = await post(url + '/atendimentos/1/pedidos', {
+      itens: [
+        { idProduto: 10, quantidade: 2, preco: 0.01, setor: 'BAR', observacao: ' Ao ponto ' },
+        { idProduto: 20, quantidade: 2, preco: 0.01, setor: 'COZINHA' }
+      ]
+    }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' });
+    assert.equal(created.status, 201);
+    const body = await created.json();
+    assert.equal(body.idPedido, 5801);
+    assert.equal(body.total, 120);
+    assert.equal(body.status, 'RECEBIDO');
+    assert.equal(body.itens[0].setor, 'COZINHA');
+    assert.equal(body.itens[0].subtotal, 96);
+    assert.equal(body.itens[0].observacao, 'Ao ponto');
+    assert.equal(body.itens[1].setor, 'BAR');
+    assert.equal(body.itens[1].subtotal, 24);
+    assert.equal(confirmacoes, 1);
+  }, {
+    confirmarPedido: async (idComanda, input, token, key) => {
+      confirmacoes++;
+      assert.equal(idComanda, 1);
+      assert.equal(token, sessaoToken);
+      assert.equal(key, 'chave-pedido-valida-0001');
+      assert.deepEqual(input.itens, [
+        { idProduto: 10, quantidade: 2, observacao: 'Ao ponto' },
+        { idProduto: 20, quantidade: 2, observacao: null }
+      ]);
+      return {
+        replay: false,
+        dto: {
+          idPedido: 5801, idComanda: 1, idMesa: 8, numeroMesa: 8, status: 'RECEBIDO',
+          dataHora: '2026-10-26T12:00:00.000Z', total: 120,
+          itens: [
+            { idItem: 1, idProduto: 10, nomeProduto: 'Filé ao molho', quantidade: 2, precoUnitario: 48, subtotal: 96, observacao: 'Ao ponto', setor: 'COZINHA', status: 'RECEBIDO' },
+            { idItem: 2, idProduto: 20, nomeProduto: 'Suco de laranja', quantidade: 2, precoUnitario: 12, subtotal: 24, observacao: null, setor: 'BAR', status: 'RECEBIDO' }
+          ]
+        }
+      };
+    }
+  });
+});

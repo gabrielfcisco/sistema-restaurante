@@ -47,3 +47,51 @@ export interface ItemFilaDto {
 export interface AlterarStatusItemInput { statusAtual: StatusFila; status: StatusPreparo }
 export interface StatusItemDto { idItem: number; status: StatusPreparo; statusPedido: StatusPreparo }
 export interface FilaEventoDto { itens: ItemFilaDto[] }
+
+export type CategoriaCardapio = 'PRATO' | 'SOBREMESA' | 'BEBIDA';
+export interface ProdutoResumoDto {
+  idProduto: number;
+  nome: string;
+  descricao: string | null;
+  preco: number;
+  categoria: CategoriaCardapio;
+  setor: SetorOperacional;
+  disponivel: boolean;
+}
+export interface ItemCarrinhoDto {
+  idProduto: number;
+  nome: string;
+  precoUnitario: number;
+  quantidade: number;
+  setor: SetorOperacional;
+  observacao?: string | null;
+}
+export interface CriarItemPedidoInput {
+  idProduto: number;
+  quantidade: number;
+  observacao?: string | null;
+}
+export interface CriarPedidoInput {
+  itens: CriarItemPedidoInput[];
+}
+export interface ItemPedidoConfirmadoDto {
+  idItem: number;
+  idProduto: number;
+  nomeProduto: string;
+  quantidade: number;
+  precoUnitario: number;
+  subtotal: number;
+  observacao: string | null;
+  setor: SetorOperacional;
+  status: StatusPreparo;
+}
+export interface PedidoConfirmadoDto {
+  idPedido: number;
+  idComanda: number;
+  idMesa: number;
+  numeroMesa: number;
+  status: StatusPreparo;
+  dataHora: string;
+  total: number;
+  itens: ItemPedidoConfirmadoDto[];
+}

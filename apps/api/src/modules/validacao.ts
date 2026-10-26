@@ -47,3 +47,17 @@ export function idRota(value: unknown): number {
   exigir(typeof value === 'string' && /^[1-9]\d*$/.test(value), 400, 'ID_INVALIDO', 'Identificador inválido.');
   return id(Number(value));
 }
+
+export function quantidadeItem(value: unknown): number {
+  exigir(typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= 1000,
+    400, 'QUANTIDADE_INVALIDA', 'Informe uma quantidade inteira positiva.');
+  return value;
+}
+
+export function observacaoItem(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  exigir(typeof value === 'string' && value.trim().length <= 500,
+    400, 'OBSERVACAO_INVALIDA', 'A observação deve ter até 500 caracteres.');
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}

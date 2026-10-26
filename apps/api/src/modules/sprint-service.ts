@@ -1,14 +1,22 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto, AtendimentoMesaDto } from '@restaurante/contracts';
-import type { PrismaClient, Prisma, Comanda, Cartao } from '../generated/prisma/client';
+import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto, AtendimentoMesaDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, StatusPreparo } from '@restaurante/contracts';
+import type { PrismaClient, Prisma, Comanda, Cartao, Produto } from '../generated/prisma/client';
 import { ErroApi, exigir, telefone } from './validacao';
+import { statusAgregado, statusPreparo } from './operacao/service';
 
 const ativos = ['ABERTA', 'EM_CONSUMO', 'CONTA_SOLICITADA'] as const;
+const comandasAceitamPedido = ['ABERTA', 'EM_CONSUMO'] as const;
 const filtroAtivo = { status: { in: [...ativos] } };
 export const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 function atendimento(c: Comanda & { cartao: Cartao | null }): AtendimentoDto {
   return { idComanda: c.idComanda, idCliente: c.idCliente, idMesa: c.idMesa, idCartao: c.idCartao,
     codigoCartao: c.cartao?.codigo ?? null, status: c.status, dataAbertura: c.dataAbertura.toISOString() };
+}
+function produtoResumo(p: Produto): ProdutoResumoDto {
+  return {
+    idProduto: p.idProduto, nome: p.nome, descricao: p.descricao, preco: Number(p.preco),
+    categoria: p.categoria, setor: p.setor, disponivel: p.ativo
+  };
 }
 export interface SprintService {
   mesaDispositivo(token: string, idMesaInicial: number): Promise<{ idMesa: number; numero: number }>;
@@ -23,6 +31,10 @@ export interface SprintService {
   acessar(codigo: string, idMesa: number): Promise<SessaoMesaDto>;
   sessao(token: string): Promise<AtendimentoMesaDto>;
   sair(token: string): Promise<void>;
+  categoriasCardapio(token: string): Promise<CategoriaCardapio[]>;
+  produtosCardapio(token: string, categoria?: CategoriaCardapio): Promise<ProdutoResumoDto[]>;
+  detalheProduto(token: string, idProduto: number): Promise<ProdutoResumoDto>;
+  confirmarPedido(idComanda: number, input: CriarPedidoInput, token: string, key: string): Promise<{ dto: PedidoConfirmadoDto; replay: boolean }>;
 }
 export function erroBanco(error: unknown): Error {
   if (error instanceof ErroApi) return error;
@@ -35,6 +47,7 @@ export function erroBanco(error: unknown): Error {
   return error instanceof Error ? error : new Error('Erro interno.');
 }
 export class PrismaSprintService implements SprintService {
+  private pedidosIdempotentes = new Map<string, { fingerprint: string; idPedido: number; idComanda: number }>();
   constructor(private db: () => PrismaClient, private sessionSeconds = 28800) {}
 
   async mesaDispositivo(token: string, idMesaInicial: number) {
@@ -174,5 +187,137 @@ export class PrismaSprintService implements SprintService {
     const now = new Date();
     const result = await this.db().sessaoMesa.updateMany({ where: { tokenHash: hash(token), revogadaEm: null, expiraEm: { gt: now } }, data: { revogadaEm: now } });
     exigir(result.count, 401, 'SESSAO_INVALIDA', 'Sessão ausente, expirada ou revogada.');
+  }
+  async categoriasCardapio(token: string): Promise<CategoriaCardapio[]> {
+    await this.sessao(token);
+    const rows = await this.db().produto.findMany({ where: { ativo: true }, select: { categoria: true }, distinct: ['categoria'] });
+    const ordem: CategoriaCardapio[] = ['PRATO', 'SOBREMESA', 'BEBIDA'];
+    return ordem.filter(c => rows.some(r => r.categoria === c));
+  }
+  async produtosCardapio(token: string, categoria?: CategoriaCardapio): Promise<ProdutoResumoDto[]> {
+    await this.sessao(token);
+    const produtos = await this.db().produto.findMany({
+      where: { ativo: true, ...(categoria ? { categoria } : {}) },
+      orderBy: [{ categoria: 'asc' }, { nome: 'asc' }, { idProduto: 'asc' }]
+    });
+    return produtos.map(produtoResumo);
+  }
+  async detalheProduto(token: string, idProduto: number): Promise<ProdutoResumoDto> {
+    await this.sessao(token);
+    const produto = await this.db().produto.findUnique({ where: { idProduto } });
+    exigir(produto, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
+    return produtoResumo(produto);
+  }
+  async confirmarPedido(idComanda: number, input: CriarPedidoInput, token: string, key: string): Promise<{ dto: PedidoConfirmadoDto; replay: boolean }> {
+    exigir(input.itens.length > 0, 400, 'PEDIDO_VAZIO', 'Adicione ao menos um item antes de confirmar o pedido.');
+    const normalizedItens = input.itens.map(item => ({
+      idProduto: item.idProduto,
+      quantidade: item.quantidade,
+      observacao: item.observacao?.trim() ? item.observacao.trim() : null
+    }));
+    const fingerprint = hash(JSON.stringify([idComanda, normalizedItens]));
+    const keyScope = `${idComanda}:${key}`;
+    return this.transacao(async tx => {
+      const session = await tx.sessaoMesa.findUnique({
+        where: { tokenHash: hash(token) },
+        include: { comanda: { include: { cartao: true, mesa: true, vinculoAtivo: true } } }
+      });
+      exigir(session && !session.revogadaEm && session.expiraEm.getTime() > Date.now(),
+        401, 'SESSAO_INVALIDA', 'Sessão ausente, expirada ou revogada.');
+      const c = session.comanda;
+      exigir(ativos.some(status => status === c.status) && c.dataFechamento === null
+        && c.vinculoAtivo && c.vinculoAtivo.idCartao === c.idCartao && c.cartao && c.mesa.status === 'OCUPADA',
+        401, 'SESSAO_INVALIDA', 'Atendimento encerrado ou alterado. Identifique seu cartão novamente.');
+      exigir(c.idComanda === idComanda, 403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
+
+      await this.bloquearMesa(tx, c.idMesa);
+      const comandaAtual = await tx.comanda.findUniqueOrThrow({ where: { idComanda }, include: { mesa: true } });
+      exigir(ativos.some(status => status === comandaAtual.status) && comandaAtual.dataFechamento === null && comandaAtual.mesa.status === 'OCUPADA',
+        409, 'COMANDA_ENCERRADA', 'Comanda encerrada.');
+      exigir(comandasAceitamPedido.some(status => status === comandaAtual.status),
+        409, 'PEDIDOS_BLOQUEADOS', 'Novos pedidos estão bloqueados para esta comanda.');
+
+      const cached = this.pedidosIdempotentes.get(keyScope);
+      if (cached) {
+        exigir(cached.fingerprint === fingerprint, 409, 'CHAVE_REUTILIZADA', 'Esta chave já foi usada para outro pedido.');
+        const existente = await tx.pedido.findUnique({
+          where: { idPedido: cached.idPedido },
+          include: { itens: { include: { produto: true }, orderBy: { idItem: 'asc' } }, comanda: { include: { mesa: true } } }
+        });
+        if (existente) {
+          return { dto: this.montarPedidoDto(existente), replay: true };
+        }
+      }
+
+      const idsUnicos = [...new Set(normalizedItens.map(i => i.idProduto))];
+      const produtos = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } } });
+      const mapaProdutos = new Map(produtos.map(p => [p.idProduto, p]));
+      for (const item of normalizedItens) {
+        const p = mapaProdutos.get(item.idProduto);
+        exigir(p, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
+        exigir(p.ativo, 409, 'PRODUTO_INDISPONIVEL', `O item "${p.nome}" está indisponível no momento.`);
+      }
+
+      const dataHora = new Date();
+      const criado = await tx.pedido.create({
+        data: {
+          idComanda,
+          dataHora,
+          status: 'RECEBIDO',
+          itens: {
+            create: normalizedItens.map(item => ({
+              idProduto: item.idProduto,
+              quantidade: item.quantidade,
+              observacao: item.observacao,
+              status: 'RECEBIDO'
+            }))
+          }
+        },
+        include: { itens: { include: { produto: true }, orderBy: { idItem: 'asc' } }, comanda: { include: { mesa: true } } }
+      });
+
+      if (comandaAtual.status === 'ABERTA') {
+        await tx.comanda.update({ where: { idComanda }, data: { status: 'EM_CONSUMO' } });
+      }
+
+      this.pedidosIdempotentes.set(keyScope, { fingerprint, idPedido: criado.idPedido, idComanda });
+      return { dto: this.montarPedidoDto(criado), replay: false };
+    });
+  }
+  private montarPedidoDto(pedido: {
+    idPedido: number;
+    idComanda: number;
+    dataHora: Date;
+    status: string;
+    comanda: { idMesa: number; mesa: { numero: number } };
+    itens: Array<{ idItem: number; idProduto: number; quantidade: number; observacao: string | null; status: string; produto: Produto }>;
+  }): PedidoConfirmadoDto {
+    const itens = pedido.itens.map(item => {
+      const precoUnitario = Number(item.produto.preco);
+      const subtotal = Math.round(precoUnitario * item.quantidade * 100) / 100;
+      return {
+        idItem: item.idItem,
+        idProduto: item.idProduto,
+        nomeProduto: item.produto.nome,
+        quantidade: item.quantidade,
+        precoUnitario,
+        subtotal,
+        observacao: item.observacao,
+        setor: item.produto.setor,
+        status: statusPreparo(item.status)
+      };
+    });
+    const total = Math.round(itens.reduce((acc, i) => acc + i.subtotal, 0) * 100) / 100;
+    const status: StatusPreparo = itens.length ? statusAgregado(itens.map(i => i.status)) : 'RECEBIDO';
+    return {
+      idPedido: pedido.idPedido,
+      idComanda: pedido.idComanda,
+      idMesa: pedido.comanda.idMesa,
+      numeroMesa: pedido.comanda.mesa.numero,
+      status,
+      dataHora: pedido.dataHora.toISOString(),
+      total,
+      itens
+    };
   }
 }
