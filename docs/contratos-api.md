@@ -77,7 +77,7 @@ As rotas abaixo são documentação de preparação; **não estão implementadas
 | US-07 | GET `/cardapio/categorias` | Sessão ativa da mesa | Categorias presentes em produtos ativos, para navegação conforme Figma. |
 | US-07 | GET `/cardapio/produtos?categoria=:id` | Sessão ativa da mesa | Produtos ativos da categoria; imagem apontada por chave relativa persistida. |
 | US-08 | GET `/cardapio/produtos/:idProduto` | Sessão ativa da mesa | Nome, descrição, preço e disponibilidade; produto desativado informa indisponibilidade. |
-| US-09/10/11 | POST `/atendimentos/:idComanda/pedidos` | Sessão ativa vinculada à comanda | `{itens:[{idProduto,quantidade}]}` + `Idempotency-Key`; cada confirmação cria pedido novo na mesma comanda, sem reenviar linhas antigas. Servidor recalcula preço e grava pedido/itens por setor atomicamente. |
+| US-09/10/11 | POST `/atendimentos/:idComanda/pedidos` | Sessão ativa vinculada à comanda | **Implementado:** `{itens:[{idProduto,quantidade,observacao?}]}` + `Idempotency-Key`; cada confirmação cria pedido novo na mesma comanda, sem reenviar linhas antigas. Servidor recalcula preço e grava pedido/itens por setor atomicamente (201 novo / 200 replay). |
 | US-12 | GET `/cozinha/itens` | Sem login (painel na rede interna) | Itens COZINHA não entregues (`RECEBIDO`, `EM_PREPARO`, `PRONTO`), com mesa/comanda/horário, ordenados por `Pedido.dataHora`; PRONTO fica visível para concluir entrega. |
 | US-12 | GET `/cozinha/eventos` (SSE) | Sem login (painel na rede interna) | Eventos de itens novos e mudanças de status; GET `/cozinha/itens` fornece snapshot/reconciliação. |
 | US-12 | PATCH `/cozinha/itens/:idItem/status` | Sem login (painel na rede interna) | Avança item COZINHA uma etapa; sequência RECEBIDO → EM_PREPARO → PRONTO → ENTREGUE. |

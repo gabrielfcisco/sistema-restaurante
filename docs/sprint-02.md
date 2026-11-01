@@ -2,7 +2,7 @@
 
 ## Escopo e estado
 
-**Atualização — US-12/US-13:** painéis, GETs de fila, streams SSE e PATCHs de status foram implementados. Veja [contratos finais, compatibilidade e testes](us-12-us-13.md). US-07 a US-11 permanecem como planejamento. As decisões confirmadas abaixo são preservadas; descrições da preparação referem-se ao estado anterior à implementação destas duas histórias.
+**Atualização — US-10/US-11 e US-12/US-13:** revisão/confirmação de pedido (`POST /atendimentos/:idComanda/pedidos` + leitura de produtos ativos da sessão e telas de revisão/confirmação em `apps/mesa`), painéis operacionais, GETs de fila, streams SSE e PATCHs de status foram implementados. Veja [contratos finais, compatibilidade e testes](us-12-us-13.md). As decisões confirmadas abaixo são preservadas; descrições da preparação referem-se ao estado anterior à implementação destas histórias.
 
 Este documento registra os critérios fornecidos para preparar arquitetura e contratos. Não implementa endpoints, telas, upload ou migration. O sistema atual continua na Sprint 1. As novas rotas descritas aqui são propostas justificadas pelos critérios e não estão registradas no servidor até serem implementadas.
 

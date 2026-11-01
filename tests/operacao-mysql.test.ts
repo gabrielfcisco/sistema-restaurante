@@ -6,6 +6,7 @@ import mariadb from 'mariadb';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../apps/api/src/generated/prisma/client';
 import { PrismaOperacaoService } from '../apps/api/src/modules/operacao/service';
+import { PrismaSprintService } from '../apps/api/src/modules/sprint-service';
 import { createApp } from '../apps/api/src/app';
 import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
@@ -27,7 +28,7 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
       await connection.query(await readFile(directory + '/' + name + '/migration.sql', 'utf8'));
     url.pathname = '/' + database;
     db = new PrismaClient({ adapter: new PrismaMariaDb(mysqlTestConfig(url, true)) });
-    const client = db, service = new PrismaOperacaoService(() => client);
+    const client = db, service = new PrismaOperacaoService(() => client), sprint = new PrismaSprintService(() => client, 600);
     const cliente = await db.cliente.create({ data: { nome: 'Cliente Fictício', cpf: '12345678909', telefone: '(11) 00000-0000' } });
     const mesa = await db.mesa.create({ data: { numero: 8, status: 'OCUPADA' } });
     const comanda = await db.comanda.create({ data: { idCliente: cliente.idCliente, idMesa: mesa.idMesa } });
@@ -78,9 +79,9 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
     assert.equal((await service.listar('COZINHA')).length, 0);
     await assert.rejects(service.avancar('COZINHA', foodOld.idItem, { statusAtual: 'RECEBIDO', status: 'EM_PREPARO' }), { code: 'ATENDIMENTO_ENCERRADO' });
     assert.equal(await db.itemPedido.count(), 4);
-    // Contrato com US-11: um produtor persiste um novo pedido enquanto os dois
+    // Contrato com US-11: confirmação via serviço/rota cria um novo pedido enquanto os dois
     // painéis estão conectados. O backend real distribui somente as novas linhas.
-    const server = createApp(async () => {}, { operacao: service, filaIntervalMs: 30 }).listen(0, '127.0.0.1');
+    const server = createApp(async () => {}, { service: sprint, operacao: service, filaIntervalMs: 30 }).listen(0, '127.0.0.1');
     await once(server, 'listening');
     const base = 'http://127.0.0.1:' + (server.address() as AddressInfo).port + '/api';
     const abort = new AbortController();
@@ -106,9 +107,23 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
     try {
       const nextKitchen = await connect('cozinha'), nextBar = await connect('bar');
       assert.deepEqual(await nextKitchen(), []); assert.deepEqual(await nextBar(), []);
-      const atendimento = await db.comanda.create({ data: { idCliente: cliente.idCliente, idMesa: mesa.idMesa } });
-      const received = await db.pedido.create({ data: { idComanda: atendimento.idComanda, dataHora: new Date(),
-        itens: { create: [{ idProduto: food.idProduto, quantidade: 1 }, { idProduto: drink.idProduto, quantidade: 2 }] } }, include: { itens: true } });
+      const opened = await sprint.abrir({ idCliente: cliente.idCliente, idMesa: mesa.idMesa, codigoCartao: '00123' }, 'chave-abertura-us11-01');
+      const session = await sprint.acessar('00123', mesa.idMesa);
+      const postOrder = await fetch(base + '/atendimentos/' + opened.dto.idComanda + '/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.token, 'Idempotency-Key': 'chave-pedido-us11-0001' },
+        body: JSON.stringify({ itens: [{ idProduto: food.idProduto, quantidade: 1 }, { idProduto: drink.idProduto, quantidade: 2 }] })
+      });
+      assert.equal(postOrder.status, 201);
+      const received = await postOrder.json();
+      assert.equal(received.total, 46);
+      const replayOrder = await fetch(base + '/atendimentos/' + opened.dto.idComanda + '/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.token, 'Idempotency-Key': 'chave-pedido-us11-0001' },
+        body: JSON.stringify({ itens: [{ idProduto: food.idProduto, quantidade: 1 }, { idProduto: drink.idProduto, quantidade: 2 }] })
+      });
+      assert.equal(replayOrder.status, 200);
+      assert.equal((await replayOrder.json()).idPedido, received.idPedido);
       const receivedKitchen = await nextKitchen(), receivedBar = await nextBar();
       assert.equal(receivedKitchen.length, 1); assert.equal(receivedBar.length, 1);
       assert.equal(receivedKitchen[0].idPedido, received.idPedido); assert.equal(receivedBar[0].idPedido, received.idPedido);

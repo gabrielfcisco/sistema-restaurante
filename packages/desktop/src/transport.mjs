@@ -24,13 +24,15 @@ export function allowedRequest(profile, value) {
   if (profile !== 'recepcao' && profile !== 'mesa') return false;
   const routes = profile === 'recepcao'
     ? { GET: [/^\/(health|ready|mesas)$/, /^\/mesas\/[1-9]\d*$/], POST: [/^\/clientes(\/busca)?$/, /^\/atendimentos$/, /^\/mesas\/[1-9]\d*\/(reservar|liberar)$/] }
-    : { GET: [/^\/(health|ready)$/, /^\/acessos\/(mesa|dispositivo)$/], POST: [/^\/acessos\/(mesa|dispositivo)$/], DELETE: [/^\/acessos\/mesa$/] };
+    : { GET: [/^\/(health|ready)$/, /^\/acessos\/(mesa|dispositivo)$/, /^\/cardapio\/categorias$/, /^\/cardapio\/produtos(\?categoria=(PRATO|SOBREMESA|BEBIDA))?$/, /^\/cardapio\/produtos\/[1-9]\d*$/], POST: [/^\/acessos\/(mesa|dispositivo)$/, /^\/atendimentos\/[1-9]\d*\/pedidos$/], DELETE: [/^\/acessos\/mesa$/] };
   return routes[value.method]?.some(pattern => pattern.test(value.path)) ?? false;
 }
 export async function desktopRequest(profile, config, request) {
   if (!allowedRequest(profile, request)) return { status: 403, data: { error: { code: 'OPERACAO_NEGADA', message: 'Operação não permitida neste aplicativo.' } } };
   if (!config) return { status: 503, data: { error: { code: 'DESKTOP_NAO_CONFIGURADO', message: 'Configure o aplicativo com npm run setup:sprint e abra pelo Electron.' } } };
-  const session = request.path === '/acessos/mesa' && ['GET', 'DELETE'].includes(request.method);
+  const session = (request.path === '/acessos/mesa' && ['GET', 'DELETE'].includes(request.method))
+    || /^\/cardapio\//.test(request.path)
+    || /^\/atendimentos\/[1-9]\d*\/pedidos$/.test(request.path);
   if (session && (typeof request.sessionToken !== 'string' || !/^[A-Za-z0-9._~-]{32,}$/.test(request.sessionToken))) return { status: 401, data: { error: { code: 'SESSAO_INVALIDA', message: 'Sessão inválida.' } } };
   if (request.idempotencyKey !== undefined && (typeof request.idempotencyKey !== 'string' || !/^[a-zA-Z0-9_-]{16,128}$/.test(request.idempotencyKey))) return { status: 400, data: { error: { code: 'CHAVE_INVALIDA', message: 'Chave da operação inválida.' } } };
   try {

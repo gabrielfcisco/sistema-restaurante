@@ -13,6 +13,10 @@ test('bridge limita operações por aplicativo e recusa URLs/caminhos arbitrári
   assert.equal(allowedRequest('recepcao', { path: '//externo.invalid', method: 'GET' }), false);
   assert.equal(allowedRequest('recepcao', { path: '/mesas/1/../clientes', method: 'GET' }), false);
   assert.equal(allowedRequest('mesa', { path: '/acessos/mesa', method: 'POST' }), true);
+  assert.equal(allowedRequest('mesa', { path: '/cardapio/produtos', method: 'GET' }), true);
+  assert.equal(allowedRequest('mesa', { path: '/cardapio/produtos?categoria=PRATO', method: 'GET' }), true);
+  assert.equal(allowedRequest('mesa', { path: '/atendimentos/1/pedidos', method: 'POST' }), true);
+  assert.equal(allowedRequest('recepcao', { path: '/atendimentos/1/pedidos', method: 'POST' }), false);
   assert.equal(allowedRequest('recepcao', { path: '/mesas/1/liberar', method: 'POST' }), true);
   assert.equal((await desktopRequest('mesa', null, { path: '/health', method: 'GET' })).status, 503);
   assert.equal((await desktopRequest('mesa', null, { path: '/clientes', method: 'POST' })).status, 403);
