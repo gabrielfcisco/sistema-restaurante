@@ -79,6 +79,7 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
     assert.equal((await service.listar('COZINHA')).length, 0);
     await assert.rejects(service.avancar('COZINHA', foodOld.idItem, { statusAtual: 'RECEBIDO', status: 'EM_PREPARO' }), { code: 'ATENDIMENTO_ENCERRADO' });
     assert.equal(await db.itemPedido.count(), 4);
+    await db.mesa.update({ where: { idMesa: mesa.idMesa }, data: { status: 'LIVRE' } });
     // Contrato com US-11: confirmação via serviço/rota cria um novo pedido enquanto os dois
     // painéis estão conectados. O backend real distribui somente as novas linhas.
     const server = createApp(async () => {}, { service: sprint, operacao: service, filaIntervalMs: 30 }).listen(0, '127.0.0.1');
