@@ -144,3 +144,149 @@ test('QR administrativo altera a mesa validada, exige dispositivo e rejeita núm
     }
   });
 });
+
+test('US-10/11: confirmação de pedido exige sessão, chave de idempotência, itens válidos e recalcula totais e setores', async () => {
+  let confirmacoes = 0;
+  const sessaoToken = 'sessao-mesa-valida-00000000000000';
+  await http(async url => {
+    assert.equal((await fetch(url + '/atendimentos/1/pedidos', { method: 'POST' })).status, 401);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [] }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' })).status, 400);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [{ idProduto: 1, quantidade: 0 }] }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' })).status, 400);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [{ idProduto: 1, quantidade: -2 }] }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' })).status, 400);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [{ idProduto: 1, quantidade: 1.5 }] }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' })).status, 400);
+    assert.equal((await post(url + '/atendimentos/1/pedidos', { itens: [{ idProduto: 1, quantidade: 1 }] }, sessaoToken)).status, 400);
+    assert.equal(confirmacoes, 0);
+
+    const created = await post(url + '/atendimentos/1/pedidos', {
+      itens: [
+        { idProduto: 10, quantidade: 2, preco: 0.01, setor: 'BAR', observacao: ' Ao ponto ' },
+        { idProduto: 20, quantidade: 2, preco: 0.01, setor: 'COZINHA' }
+      ]
+    }, sessaoToken, { 'Idempotency-Key': 'chave-pedido-valida-0001' });
+    assert.equal(created.status, 201);
+    const body = await created.json();
+    assert.equal(body.idPedido, 5801);
+    assert.equal(body.total, 120);
+    assert.equal(body.status, 'RECEBIDO');
+    assert.equal(body.itens[0].setor, 'COZINHA');
+    assert.equal(body.itens[0].subtotal, 96);
+    assert.equal(body.itens[0].observacao, 'Ao ponto');
+    assert.equal(body.itens[1].setor, 'BAR');
+    assert.equal(body.itens[1].subtotal, 24);
+    assert.equal(confirmacoes, 1);
+  }, {
+    confirmarPedido: async (idComanda, input, token, key) => {
+      confirmacoes++;
+      assert.equal(idComanda, 1);
+      assert.equal(token, sessaoToken);
+      assert.equal(key, 'chave-pedido-valida-0001');
+      assert.deepEqual(input.itens, [
+        { idProduto: 10, quantidade: 2, observacao: 'Ao ponto' },
+        { idProduto: 20, quantidade: 2, observacao: null }
+      ]);
+      return {
+        replay: false,
+        dto: {
+          idPedido: 5801, idComanda: 1, idMesa: 8, numeroMesa: 8, status: 'RECEBIDO',
+          dataHora: '2026-10-26T12:00:00.000Z', total: 120,
+          itens: [
+            { idItem: 1, idProduto: 10, nomeProduto: 'Filé ao molho', quantidade: 2, precoUnitario: 48, subtotal: 96, observacao: 'Ao ponto', setor: 'COZINHA', status: 'RECEBIDO' },
+            { idItem: 2, idProduto: 20, nomeProduto: 'Suco de laranja', quantidade: 2, precoUnitario: 12, subtotal: 24, observacao: null, setor: 'BAR', status: 'RECEBIDO' }
+          ]
+        }
+      };
+    }
+  });
+});
+
+test('US-07: cardápio por categorias exige sessão, filtra produtos ativos e valida parâmetros', async () => {
+  const sessaoToken = 'sessao-mesa-valida-00000000000000';
+  await http(async url => {
+    // Exige autenticação de sessão
+    assert.equal((await fetch(url + '/cardapio/categorias')).status, 401);
+    assert.equal((await fetch(url + '/cardapio/produtos')).status, 401);
+
+    // Consulta categorias válidas
+    const resCategorias = await fetch(url + '/cardapio/categorias', {
+      headers: { Authorization: `Bearer ${sessaoToken}` }
+    });
+    assert.equal(resCategorias.status, 200);
+    assert.deepEqual(await resCategorias.json(), ['PRATO', 'SOBREMESA', 'BEBIDA']);
+
+    // Rejeita categoria inválida
+    const invalida = await fetch(url + '/cardapio/produtos?categoria=INVALIDA', {
+      headers: { Authorization: `Bearer ${sessaoToken}` }
+    });
+    assert.equal(invalida.status, 400);
+
+    // Consulta produtos filtrados por categoria
+    const resPratos = await fetch(url + '/cardapio/produtos?categoria=PRATO', {
+      headers: { Authorization: `Bearer ${sessaoToken}` }
+    });
+    assert.equal(resPratos.status, 200);
+    const pratos = await resPratos.json();
+    assert.equal(pratos.length, 1);
+    assert.equal(pratos[0].nome, 'Filé ao molho');
+    assert.equal(pratos[0].categoria, 'PRATO');
+  }, {
+    categoriasCardapio: async (token) => {
+      assert.equal(token, sessaoToken);
+      return ['PRATO', 'SOBREMESA', 'BEBIDA'];
+    },
+    produtosCardapio: async (token, cat) => {
+      assert.equal(token, sessaoToken);
+      const todos = [
+        { idProduto: 1, nome: 'Filé ao molho', descricao: 'Carne macia com purê', preco: 48, categoria: 'PRATO' as const, setor: 'COZINHA' as const, disponivel: true },
+        { idProduto: 2, nome: 'Suco de laranja', descricao: 'Suco natural', preco: 12, categoria: 'BEBIDA' as const, setor: 'BAR' as const, disponivel: true }
+      ];
+      return cat ? todos.filter(p => p.categoria === cat) : todos;
+    }
+  });
+});
+
+test('US-08: detalhes do item exibem nome, descrição, preço e status de disponibilidade', async () => {
+  const sessaoToken = 'sessao-mesa-valida-00000000000000';
+  await http(async url => {
+    // Exige autenticação de sessão
+    assert.equal((await fetch(url + '/cardapio/produtos/1')).status, 401);
+
+    // Rejeita ID inválido
+    assert.equal((await fetch(url + '/cardapio/produtos/abc', { headers: { Authorization: `Bearer ${sessaoToken}` } })).status, 400);
+    assert.equal((await fetch(url + '/cardapio/produtos/-1', { headers: { Authorization: `Bearer ${sessaoToken}` } })).status, 400);
+
+    // Consulta item disponível existente
+    const res = await fetch(url + '/cardapio/produtos/1', {
+      headers: { Authorization: `Bearer ${sessaoToken}` }
+    });
+    assert.equal(res.status, 200);
+    const detalhe = await res.json();
+    assert.equal(detalhe.idProduto, 1);
+    assert.equal(detalhe.nome, 'Filé ao molho');
+    assert.equal(detalhe.preco, 48);
+    assert.equal(detalhe.disponivel, true);
+    assert.equal(detalhe.setor, 'COZINHA');
+
+    // Item não encontrado
+    const naoEncontrado = await fetch(url + '/cardapio/produtos/999', {
+      headers: { Authorization: `Bearer ${sessaoToken}` }
+    });
+    assert.equal(naoEncontrado.status, 404);
+  }, {
+    detalheProduto: async (token, idProduto) => {
+      assert.equal(token, sessaoToken);
+      if (idProduto === 1) {
+        return {
+          idProduto: 1,
+          nome: 'Filé ao molho',
+          descricao: 'Filé grelhado ao ponto, servido com molho da casa, purê de batatas e legumes tostados.',
+          preco: 48,
+          categoria: 'PRATO',
+          setor: 'COZINHA',
+          disponivel: true
+        };
+      }
+      throw new ErroApi(404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
+    }
+  });
+});
+

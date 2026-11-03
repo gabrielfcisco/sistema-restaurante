@@ -34,3 +34,64 @@ export function cpfValido(value: string) {
   return true;
 }
 export function mascararCpf(cpf: string) { return '***.***.' + cpf.slice(6, 9) + '-' + cpf.slice(9); }
+
+export type SetorOperacional = 'COZINHA' | 'BAR';
+export const STATUS_PREPARO = ['RECEBIDO', 'EM_PREPARO', 'PRONTO', 'ENTREGUE'] as const;
+export type StatusPreparo = typeof STATUS_PREPARO[number];
+export type StatusFila = Exclude<StatusPreparo, 'ENTREGUE'>;
+export interface ItemFilaDto {
+  idItem: number; idPedido: number; idComanda: number; idMesa: number; numeroMesa: number;
+  nomeProduto: string; quantidade: number; observacao: string | null; setor: SetorOperacional;
+  status: StatusFila; dataHora: string;
+}
+export interface AlterarStatusItemInput { statusAtual: StatusFila; status: StatusPreparo }
+export interface StatusItemDto { idItem: number; status: StatusPreparo; statusPedido: StatusPreparo }
+export interface FilaEventoDto { itens: ItemFilaDto[] }
+
+export type CategoriaCardapio = 'PRATO' | 'SOBREMESA' | 'BEBIDA';
+export interface ProdutoResumoDto {
+  idProduto: number;
+  nome: string;
+  descricao: string | null;
+  preco: number;
+  categoria: CategoriaCardapio;
+  setor: SetorOperacional;
+  disponivel: boolean;
+}
+export interface ItemCarrinhoDto {
+  idProduto: number;
+  nome: string;
+  precoUnitario: number;
+  quantidade: number;
+  setor: SetorOperacional;
+  observacao?: string | null;
+}
+export interface CriarItemPedidoInput {
+  idProduto: number;
+  quantidade: number;
+  observacao?: string | null;
+}
+export interface CriarPedidoInput {
+  itens: CriarItemPedidoInput[];
+}
+export interface ItemPedidoConfirmadoDto {
+  idItem: number;
+  idProduto: number;
+  nomeProduto: string;
+  quantidade: number;
+  precoUnitario: number;
+  subtotal: number;
+  observacao: string | null;
+  setor: SetorOperacional;
+  status: StatusPreparo;
+}
+export interface PedidoConfirmadoDto {
+  idPedido: number;
+  idComanda: number;
+  idMesa: number;
+  numeroMesa: number;
+  status: StatusPreparo;
+  dataHora: string;
+  total: number;
+  itens: ItemPedidoConfirmadoDto[];
+}

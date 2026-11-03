@@ -13,6 +13,10 @@ test('bridge limita operações por aplicativo e recusa URLs/caminhos arbitrári
   assert.equal(allowedRequest('recepcao', { path: '//externo.invalid', method: 'GET' }), false);
   assert.equal(allowedRequest('recepcao', { path: '/mesas/1/../clientes', method: 'GET' }), false);
   assert.equal(allowedRequest('mesa', { path: '/acessos/mesa', method: 'POST' }), true);
+  assert.equal(allowedRequest('mesa', { path: '/cardapio/produtos', method: 'GET' }), true);
+  assert.equal(allowedRequest('mesa', { path: '/cardapio/produtos?categoria=PRATO', method: 'GET' }), true);
+  assert.equal(allowedRequest('mesa', { path: '/atendimentos/1/pedidos', method: 'POST' }), true);
+  assert.equal(allowedRequest('recepcao', { path: '/atendimentos/1/pedidos', method: 'POST' }), false);
   assert.equal(allowedRequest('recepcao', { path: '/mesas/1/liberar', method: 'POST' }), true);
   assert.equal((await desktopRequest('mesa', null, { path: '/health', method: 'GET' })).status, 503);
   assert.equal((await desktopRequest('mesa', null, { path: '/clientes', method: 'POST' })).status, 403);
@@ -55,5 +59,33 @@ test('cliente compartilhado preserva chave de retry e converte erros da API', as
   });
   await assert.rejects(api.abrir({ idCliente: 1, idMesa: 1, codigoCartao: '01234' }, 'chave-retry-ficticia'), (e: unknown) => e instanceof ApiError && e.code === 'CARTAO_EM_USO' && e.status === 409);
   assert.equal(key, 'chave-retry-ficticia');
+});
+
+test('painéis não usam token e o bridge limita cada um ao próprio setor', async () => {
+  for (const profile of ['cozinha', 'bar']) {
+    const other = profile === 'cozinha' ? 'bar' : 'cozinha';
+    assert.equal(allowedRequest(profile, { path: '/' + profile + '/itens', method: 'GET' }), true);
+    assert.equal(allowedRequest(profile, { path: '/' + profile + '/itens/1/status', method: 'PATCH' }), true);
+    assert.equal(allowedRequest(profile, { path: '/' + other + '/itens', method: 'GET' }), false);
+    assert.equal(allowedRequest(profile, { path: '/acessos/mesa', method: 'POST' }), false);
+  }
+  assert.equal(allowedRequest('perfil-inventado', { path: '/acessos/mesa', method: 'POST' }), false);
+  const root = await mkdtemp(join(tmpdir(), 'restaurante-panel-config-')), file = join(root, 'config.json');
+  try {
+    await writeFile(file, JSON.stringify({ apiUrl: 'http://192.168.1.50:3333/api' }));
+    assert.ok(await readDesktopConfig(file, 'cozinha'));
+    assert.equal(await readDesktopConfig(file, 'mesa'), null);
+    await writeFile(file, JSON.stringify({ apiUrl: 'http://8.8.8.8/api' }));
+    assert.equal(await readDesktopConfig(file, 'bar'), null);
+  } finally { await unlink(file); await rmdir(root); }
+  const server = createServer((req, res) => {
+    assert.equal(req.headers.authorization, undefined);
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('[]');
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const response = await desktopRequest('cozinha', { apiUrl: 'http://127.0.0.1:' + (server.address() as AddressInfo).port + '/api' }, { path: '/cozinha/itens', method: 'GET' });
+    assert.equal(response.status, 200);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 

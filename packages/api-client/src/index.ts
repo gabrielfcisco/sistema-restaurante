@@ -1,9 +1,9 @@
 
-import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto } from '@restaurante/contracts';
+import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio } from '@restaurante/contracts';
 export interface ApiRequest { path: string; method: string; body?: unknown; sessionToken?: string; idempotencyKey?: string }
 export interface ApiResult { status: number; data?: unknown }
 export type ApiTransport = (request: ApiRequest) => Promise<ApiResult>;
-declare global { interface Window { restaurante?: { request: ApiTransport; mesaId?: number } } }
+declare global { interface Window { restaurante?: { request: ApiTransport; mesaId?: number; painel?: () => Promise<{ apiUrl: string }> } } }
 export class ApiError extends Error {
   constructor(public code: string, message: string, public status = 0) { super(message); }
 }
@@ -29,6 +29,8 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     return result.data as T;
   }
   return {
+    fila: (setor: SetorOperacional) => request<ItemFilaDto[]>('/' + setor.toLowerCase() + '/itens'),
+    avancarStatus: (setor: SetorOperacional, idItem: number, input: AlterarStatusItemInput) => request<StatusItemDto>('/' + setor.toLowerCase() + '/itens/' + idItem + '/status', 'PATCH', input),
     mesaDispositivo: () => request<{ idMesa: number; numero: number }>('/acessos/dispositivo'),
     configurarDispositivo: (numero: number, codigoAdmin: string) => request<{ idMesa: number; numero: number }>('/acessos/dispositivo', 'POST', { numero, codigoAdmin }),
     health: () => request<HealthResponse>('/health'),
@@ -41,6 +43,10 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     abrir: (input: AbrirAtendimentoInput, key: string) => request<AtendimentoDto>('/atendimentos', 'POST', input, undefined, key),
     acessar: (codigoCartao: string) => request<SessaoMesaDto>('/acessos/mesa', 'POST', { codigoCartao }),
     sessao: (token: string) => request<AtendimentoMesaDto>('/acessos/mesa', 'GET', undefined, token),
-    sair: (token: string) => request<void>('/acessos/mesa', 'DELETE', undefined, token)
+    sair: (token: string) => request<void>('/acessos/mesa', 'DELETE', undefined, token),
+    categoriasCardapio: (token: string) => request<CategoriaCardapio[]>('/cardapio/categorias', 'GET', undefined, token),
+    produtosCardapio: (token: string, categoria?: CategoriaCardapio) => request<ProdutoResumoDto[]>('/cardapio/produtos' + (categoria ? '?categoria=' + categoria : ''), 'GET', undefined, token),
+    detalheProduto: (token: string, idProduto: number) => request<ProdutoResumoDto>('/cardapio/produtos/' + idProduto, 'GET', undefined, token),
+    confirmarPedido: (idComanda: number, input: CriarPedidoInput, token: string, key: string) => request<PedidoConfirmadoDto>('/atendimentos/' + idComanda + '/pedidos', 'POST', input, token, key)
   };
 }

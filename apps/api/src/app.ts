@@ -6,10 +6,13 @@ import { sprintRoutes } from './modules/sprint-routes';
 import { accessConfig, type AccessConfig } from './modules/autorizacao';
 import { ErroApi } from './modules/validacao';
 import { getPrisma } from './database/prisma';
+import { PrismaOperacaoService, type OperacaoService } from './modules/operacao/service';
+import { FilaFeed } from './modules/operacao/feed';
+import { operacaoRoutes } from './modules/operacao/routes';
 
-export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig } = {}) {
+export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig; operacao?: OperacaoService; filaIntervalMs?: number } = {}) {
   const app = express();
-  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174').split(',').map(s => s.trim());
+  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176').split(',').map(s => s.trim());
   app.disable('x-powered-by');
   app.use(cors({ origin(origin, callback) {
     // Apps desktop empacotados (file://) não enviam cookies ou credenciais.
@@ -24,7 +27,11 @@ export function createApp(checkDatabase: () => Promise<void>, options: { service
     catch { response.status(503).json({ error: { code: 'DATABASE_UNAVAILABLE', message: 'Banco de dados indisponível.' } }); }
   });
   const access = options.access ?? accessConfig();
-  app.use('/api', sprintRoutes(options.service ?? new PrismaSprintService(getPrisma, access.sessionSeconds), access));
+  const operacao = options.operacao ?? new PrismaOperacaoService(getPrisma);
+  const feed = new FilaFeed(operacao, options.filaIntervalMs);
+  app.use('/api', sprintRoutes(options.service ?? new PrismaSprintService(getPrisma, access.sessionSeconds), access, feed));
+  app.use('/api/cozinha', operacaoRoutes('COZINHA', operacao, feed));
+  app.use('/api/bar', operacaoRoutes('BAR', operacao, feed));
   app.use((_request, response) => {
     response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada.' } });
   });

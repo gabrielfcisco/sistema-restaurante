@@ -1,0 +1,5 @@
+# Módulo Cozinha — Grupo 9
+
+Este workspace Electron/Vite tem somente uma tela inicial placeholder; a fila de preparo não está implementada. Leia o `AGENTS.md` da raiz, `docs/sprint-02.md`, `docs/contratos-api.md`, os contratos/serviços atuais e as capturas em `screenshots/` (além das referências Figma) antes de implementar o fluxo. Não invente interface se não houver captura.
+
+Escopo confirmado da US-12: consultar itens não entregues do setor COZINHA (`RECEBIDO`, `EM_PREPARO`, `PRONTO`), exibindo mesa, comanda e hora da confirmação (`Pedido.dataHora`), em ordem cronológica e via SSE. Painel pode avançar item sequencialmente `RECEBIDO → EM_PREPARO → PRONTO → ENTREGUE`, só para o setor COZINHA. Cada confirmação cria novo pedido na mesma comanda; itens antigos não voltam à fila. O status agregado do Pedido é o estágio menos avançado de seus itens e é recalculado na mesma transação da alteração do item. Sem login, na rede interna. A API filtra setor/status; o app não acessa banco nem o app bar. Consulte `docs/sprint-02.md` para contratos e pendências.

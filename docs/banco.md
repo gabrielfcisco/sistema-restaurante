@@ -1,5 +1,7 @@
 # Banco — Sprint 01
 
+US-12/13 acrescentam a migration aditiva `20261022000000_status_recebido`, preservando o histórico. Consulte [compatibilidade e execução](us-12-us-13.md). Aplicar somente após revisar o destino de desenvolvimento.
+
 MySQL 8 / Prisma. A migration inicial foi preservada. A nova `20261003000000_sprint01` acrescenta:
 
 - Estados RESERVADA e MANUTENCAO em mesa.
