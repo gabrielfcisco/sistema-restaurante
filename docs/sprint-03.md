@@ -59,12 +59,12 @@ Todos são propostas de preparação e ainda não estão implementados. Prefixo 
 
 | História | Método e rota candidata | Acesso | Contrato resumido |
 |---|---|---|---|
-| US-14 | PATCH `/cozinha/itens/:idItem/status`, PATCH `/bar/itens/:idItem/status` (existentes) | Sem login, rede interna | Transições do setor somente até `PRONTO`; refletir via SSE para filas, retirada e cliente. Rejeitar `ENTREGUE` nestas rotas após a mudança. |
+| US-14 | PATCH `/cozinha/itens/:idItem/status`, PATCH `/bar/itens/:idItem/status` (**Implementado**) | Sem login, rede interna | Transições do setor somente até `PRONTO`; refletir via SSE para filas, retirada e cliente. Rejeita `ENTREGUE` nestas rotas com `409 TRANSICAO_INVALIDA`. |
 | US-15 | GET `/garcom/itens-prontos` | Sem login, rede interna | Itens `PRONTO` dos dois setores, com item, mesa, comanda e horário; ordenados por chegada. |
 | US-15 | PATCH `/garcom/itens/:idItem/status` | Sem login, rede interna | Única transição permitida `PRONTO → ENTREGUE`; atualizar status agregado na mesma transação, remover da retirada e publicar SSE para cozinha/bar e clientes. |
 | US-15/18 | GET `/garcom/eventos` (SSE) | Sem login, rede interna | Mudanças na fila de itens prontos e chamadas pendentes; GETs dos recursos são snapshots iniciais/reconexão. |
-| US-16 | GET `/atendimentos/:idComanda/pedidos` | Bearer da sessão de mesa vinculada | Pedidos e status de todos os itens da própria comanda, inclusive entregues; rejeitar sessão inválida ou de outra comanda. |
-| US-16 | GET `/atendimentos/:idComanda/eventos` (SSE) | Bearer da sessão de mesa vinculada | Eventos de status restritos à comanda validada; reconectar com snapshot GET. Cliente usa streaming autenticado, não token em query string. |
+| US-16 | GET `/atendimentos/:idComanda/pedidos` (**Implementado**) | Bearer da sessão de mesa vinculada | Pedidos e status de todos os itens da própria comanda, inclusive entregues; rejeita sessão inválida (401) ou de outra comanda (403 `COMANDA_INCORRETA`). |
+| US-16 | GET `/atendimentos/:idComanda/eventos` (SSE, **Implementado**) | Bearer da sessão de mesa vinculada | Eventos de status (`event: pedidos`) restritos à comanda validada; reconectar com snapshot GET. Cliente usa streaming autenticado, sem token em query string. |
 | US-17 | GET `/garcom/mesas/:idMesa/comandas` | Sem login, rede interna | Todas as comandas ativas da mesa para seleção; não retornar dados pessoais desnecessários. |
 | US-17 | GET `/garcom/comandas/:idComanda` | Sem login, rede interna | Detalhe de comanda ativa selecionada, pedidos/itens/status e total parcial (todos os pedidos confirmados). |
 | US-18 | POST `/atendimentos/:idComanda/chamados` | Bearer da sessão vinculada | Criar chamada para a mesa da comanda; se já houver chamada pendente na mesa, retornar a existente sem duplicar. |

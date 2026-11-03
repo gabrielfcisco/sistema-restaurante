@@ -159,4 +159,7 @@ hr { margin: 28px 0; border: 0; border-top: 1px solid #eee5da; }
 .confirm-badge { display: inline-block; padding: 5px 12px; border-radius: 999px; background: #eaf4fc; color: #287dbb; font-size: .78rem; font-weight: 750; margin-bottom: 12px; }
 .confirm-badge.success { background: #e6f5ed; color: #247b54; }
 .order-item-badge { display: inline-block; padding: 5px 11px; border-radius: 999px; background: #fff3d8; color: #a46600; font-size: .78rem; font-weight: 700; width: fit-content; }
+.order-item-badge.recebido { background: #eaf4fc; color: #287dbb; }
+.order-item-badge.em_preparo { background: #fff3d8; color: #a46600; }
+.order-item-badge.pronto, .order-item-badge.entregue { background: #e6f5ed; color: #247b54; }
 @media (max-width: 860px) { .cart-layout { grid-template-columns: 1fr; } }

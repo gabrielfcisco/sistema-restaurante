@@ -63,13 +63,12 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
     ]);
     assert.equal((await db.pedido.findUniqueOrThrow({ where: { idPedido: newOrder.idPedido } })).status, 'PRONTO');
     assert.ok((await service.listar('COZINHA')).some(i => i.idItem === foodNew.idItem && i.status === 'PRONTO'));
-    await service.avancar('COZINHA', foodNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' });
-    assert.equal((await service.listar('COZINHA')).some(i => i.idItem === foodNew.idItem), false);
-    assert.equal((await db.pedido.findUniqueOrThrow({ where: { idPedido: newOrder.idPedido } })).status, 'PRONTO');
-    await service.avancar('BAR', drinkNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' });
-    assert.equal((await db.pedido.findUniqueOrThrow({ where: { idPedido: newOrder.idPedido } })).status, 'ENTREGUE');
+    // US-14: cozinha e bar avançam somente até PRONTO; ENTREGUE é bloqueado nestas rotas/serviço.
+    await assert.rejects(service.avancar('COZINHA', foodNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' }), { code: 'TRANSICAO_INVALIDA' });
+    await assert.rejects(service.avancar('BAR', drinkNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' }), { code: 'TRANSICAO_INVALIDA' });
+    assert.ok((await service.listar('COZINHA')).some(i => i.idItem === foodNew.idItem && i.status === 'PRONTO'));
+    assert.ok((await service.listar('BAR')).some(i => i.idItem === drinkNew.idItem && i.status === 'PRONTO'));
     await assert.rejects(service.avancar('BAR', drinkNew.idItem, { statusAtual: 'RECEBIDO', status: 'EM_PREPARO' }), { code: 'ITEM_ALTERADO' });
-    assert.equal((await service.listar('BAR')).length, 0);
     // Falha depois de alterar o item: status do item também deve ser revertido.
     await connection.query("CREATE TRIGGER falhar_agregado BEFORE UPDATE ON pedido FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Falha ficticia'");
     await assert.rejects(service.avancar('COZINHA', foodOld.idItem, { statusAtual: 'RECEBIDO', status: 'EM_PREPARO' }));
@@ -137,6 +136,23 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
       assert.equal(updatedKitchen.length, 1); assert.equal(updatedKitchen[0].status, 'EM_PREPARO');
       assert.equal((await service.listar('BAR'))[0].status, 'RECEBIDO');
       assert.equal((await db.pedido.findUniqueOrThrow({ where: { idPedido: received.idPedido } })).status, 'RECEBIDO');
+
+      // US-16: cliente consulta os pedidos da própria comanda e não pode consultar outra comanda
+      const outraComanda = await sprint.abrir({ idCliente: cliente.idCliente, idMesa: mesa.idMesa, codigoCartao: '00124', confirmarMesaOcupada: true }, 'chave-abertura-us16-02');
+      const otraSessao = await sprint.acessar('00124', mesa.idMesa);
+      const forbiddenOrders = await fetch(base + '/atendimentos/' + opened.dto.idComanda + '/pedidos', {
+        headers: { Authorization: 'Bearer ' + otraSessao.token }
+      });
+      assert.equal(forbiddenOrders.status, 403);
+      const myOrdersRes = await fetch(base + '/atendimentos/' + opened.dto.idComanda + '/pedidos', {
+        headers: { Authorization: 'Bearer ' + session.token }
+      });
+      assert.equal(myOrdersRes.status, 200);
+      const myOrders = await myOrdersRes.json();
+      assert.equal(myOrders.length, 1);
+      assert.equal(myOrders[0].idPedido, received.idPedido);
+      assert.equal(myOrders[0].itens.find((i: { idItem: number }) => i.idItem === receivedKitchen[0].idItem).status, 'EM_PREPARO');
+      void outraComanda;
     } finally {
       abort.abort();
       await Promise.all(streams.map(reader => reader.cancel().catch(() => {})));

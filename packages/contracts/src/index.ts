@@ -47,6 +47,7 @@ export interface ItemFilaDto {
 export interface AlterarStatusItemInput { statusAtual: StatusFila; status: StatusPreparo }
 export interface StatusItemDto { idItem: number; status: StatusPreparo; statusPedido: StatusPreparo }
 export interface FilaEventoDto { itens: ItemFilaDto[] }
+export interface PedidosComandaEventoDto { pedidos: PedidoConfirmadoDto[] }
 
 export type CategoriaCardapio = 'PRATO' | 'SOBREMESA' | 'BEBIDA';
 export interface ProdutoResumoDto {

@@ -50,7 +50,7 @@ try {
   if (!ready) throw new Error('API descartável não iniciou.');
   await run(process.execPath, ['node_modules/electron/cli.js', 'scripts/smoke-operacao.mjs'], env);
   const statuses = await connection.query('SELECT status FROM item_pedido WHERE id_item IN (1,2) ORDER BY id_item');
-  if (statuses.some(row => row.status !== 'ENTREGUE')) throw new Error('Interface não persistiu a entrega dos itens.');
+  if (statuses.some(row => row.status !== 'PRONTO')) throw new Error('Interface não persistiu o preparo dos itens até PRONTO.');
   console.log('Fluxo dos dois painéis confirmado no banco.');
 } finally {
   if (server && server.exitCode === null) { const exited = once(server, 'exit'); server.kill(); await exited; }

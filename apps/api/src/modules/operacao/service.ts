@@ -35,8 +35,8 @@ export class PrismaOperacaoService implements OperacaoService {
     }));
   }
   async avancar(setor: SetorOperacional, idItem: number, input: AlterarStatusItemInput): Promise<StatusItemDto> {
-    exigir(STATUS_PREPARO.indexOf(input.status) === STATUS_PREPARO.indexOf(input.statusAtual) + 1,
-      409, 'TRANSICAO_INVALIDA', 'Avance somente uma etapa do preparo.');
+    exigir(input.status !== 'ENTREGUE' && STATUS_PREPARO.indexOf(input.status) === STATUS_PREPARO.indexOf(input.statusAtual) + 1,
+      409, 'TRANSICAO_INVALIDA', 'Avance somente uma etapa do preparo (RECEBIDO → EM_PREPARO → PRONTO).');
     for (let attempt = 0; ; attempt++) {
       try {
         return await this.database().$transaction(async tx => {

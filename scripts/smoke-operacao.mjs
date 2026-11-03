@@ -42,17 +42,16 @@ app.whenReady().then(async () => {
         }
         for (const status of ['em_preparo', 'pronto']) {
           await clickCard(window, id);
-          await waitFor(window, `!!document.querySelector('.operation-column.${status} [data-item-id="${id}"]') && !document.querySelector('[data-item-id="${id}"] button').disabled`);
+          await waitFor(window, `!!document.querySelector('.operation-column.${status} [data-item-id="${id}"]')`);
         }
-        await clickCard(window, id);
-        await waitFor(window, `!document.querySelector('[data-item-id="${id}"]')`);
+        assert.equal(await evaluate(window, `!!document.querySelector('.operation-column.pronto [data-item-id="${id}"] button')`), false);
         window.webContents.session.webRequest.onBeforeRequest({ urls: [process.env.OPERACAO_TEST_API + '/*'] }, (_details, callback) => callback({ cancel: true }));
         await evaluate(window, 'document.querySelector(".operation-refresh").click()');
         await waitFor(window, '!!document.querySelector(".connection-badge.reconectando")');
         assert.equal(await evaluate(window, '[...document.querySelectorAll(".operation-action")].every(b=>b.disabled)'), true);
         window.webContents.session.webRequest.onBeforeRequest(null);
         // O EventSource deve reconectar sozinho, sem recarregar a interface.
-        await waitFor(window, '!!document.querySelector(".connection-badge.conectado") && document.querySelectorAll(".operation-card").length === 2');
+        await waitFor(window, '!!document.querySelector(".connection-badge.conectado") && document.querySelectorAll(".operation-card").length === 3');
         window.setSize(840, 620);
         await waitFor(window, 'window.innerWidth <= 840');
         assert.equal(await evaluate(window, 'document.documentElement.scrollWidth <= window.innerWidth'), true);

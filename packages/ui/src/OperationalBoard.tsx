@@ -7,10 +7,10 @@ interface ClienteFila {
   avancar(id: number, input: AlterarStatusItemInput): Promise<StatusItemDto>;
   acompanhar(callbacks: { itens: (itens: ItemFilaDto[]) => void; conexao: (status: 'conectando' | 'conectado' | 'reconectando', message?: string) => void }): () => void;
 }
-const columns: { status: StatusFila; title: string; action: string; next: AlterarStatusItemInput['status'] }[] = [
+const columns: { status: StatusFila; title: string; action?: string; next?: AlterarStatusItemInput['status'] }[] = [
   { status: 'RECEBIDO', title: 'Recebidos', action: 'Iniciar preparo', next: 'EM_PREPARO' },
   { status: 'EM_PREPARO', title: 'Em preparo', action: 'Marcar como pronto', next: 'PRONTO' },
-  { status: 'PRONTO', title: 'Prontos', action: 'Marcar como entregue', next: 'ENTREGUE' }
+  { status: 'PRONTO', title: 'Prontos' }
 ];
 export function PainelOperacional({ setor, cliente }: { setor: SetorOperacional; cliente: ClienteFila }) {
   const title = setor === 'COZINHA' ? 'Cozinha' : 'Bar';
@@ -69,7 +69,7 @@ export function PainelOperacional({ setor, cliente }: { setor: SetorOperacional;
               <p className="operation-meta">Pedido #{item.idPedido} · <time dateTime={item.dataHora} title={new Date(item.dataHora).toLocaleString('pt-BR')}>{time}</time> · espera {minutes} min</p>
               {item.observacao && <p className="operation-observation"><strong>Observação:</strong> {item.observacao}</p>}
               <div className="operation-tags"><span className={'item-status ' + column.status.toLowerCase()}>{column.title}</span>{minutes >= 20 && <span className="item-overdue">Acima de 20 min</span>}</div>
-              <Button className="operation-action" disabled={busy.has(item.idItem) || connection !== 'conectado'} onClick={() => void avancar(item, column.next)}>{busy.has(item.idItem) ? 'Atualizando…' : column.action}</Button>
+              {column.action && column.next && <Button className="operation-action" disabled={busy.has(item.idItem) || connection !== 'conectado'} onClick={() => void avancar(item, column.next!)}>{busy.has(item.idItem) ? 'Atualizando…' : column.action}</Button>}
             </article>;
           })}
         </section>;

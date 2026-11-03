@@ -35,6 +35,8 @@ export interface SprintService {
   produtosCardapio(token: string, categoria?: CategoriaCardapio): Promise<ProdutoResumoDto[]>;
   detalheProduto(token: string, idProduto: number): Promise<ProdutoResumoDto>;
   confirmarPedido(idComanda: number, input: CriarPedidoInput, token: string, key: string): Promise<{ dto: PedidoConfirmadoDto; replay: boolean }>;
+  listarPedidosComanda(idComanda: number, token: string): Promise<PedidoConfirmadoDto[]>;
+  listarPedidosComandaInterno?(idComanda: number): Promise<PedidoConfirmadoDto[]>;
 }
 export function erroBanco(error: unknown): Error {
   if (error instanceof ErroApi) return error;
@@ -283,6 +285,25 @@ export class PrismaSprintService implements SprintService {
       this.pedidosIdempotentes.set(keyScope, { fingerprint, idPedido: criado.idPedido, idComanda });
       return { dto: this.montarPedidoDto(criado), replay: false };
     });
+  }
+  async listarPedidosComanda(idComanda: number, token: string): Promise<PedidoConfirmadoDto[]> {
+    const sessao = await this.sessao(token);
+    exigir(sessao.idComanda === idComanda, 403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
+    return this.listarPedidosComandaInterno(idComanda);
+  }
+  async listarPedidosComandaInterno(idComanda: number): Promise<PedidoConfirmadoDto[]> {
+    const comanda = await this.db().comanda.findUnique({
+      where: { idComanda },
+      include: { mesa: true }
+    });
+    exigir(comanda && ativos.some(s => s === comanda.status) && comanda.dataFechamento === null && comanda.mesa.status === 'OCUPADA',
+      409, 'COMANDA_ENCERRADA', 'Comanda encerrada.');
+    const pedidos = await this.db().pedido.findMany({
+      where: { idComanda },
+      include: { itens: { include: { produto: true }, orderBy: { idItem: 'asc' } }, comanda: { include: { mesa: true } } },
+      orderBy: [{ dataHora: 'asc' }, { idPedido: 'asc' }]
+    });
+    return pedidos.map(p => this.montarPedidoDto(p));
   }
   private montarPedidoDto(pedido: {
     idPedido: number;

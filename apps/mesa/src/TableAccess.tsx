@@ -202,8 +202,18 @@ export function TableAccess() {
     const timer = setInterval(() => void check(), 15000);
     void check();
     void loadCatalog();
+    const stopAcompanhar = api.acompanharPedidosComanda(session.idComanda, session.token, {
+      pedidos: lista => {
+        if (!active) return;
+        setHistoricoPedidos(lista);
+        if (lista.length > 0) {
+          setUltimoPedido(atual => (atual ? lista.find(p => p.idPedido === atual.idPedido) ?? lista[lista.length - 1] : lista[lista.length - 1]));
+        }
+      }
+    });
     return () => {
       active = false;
+      stopAcompanhar();
       clearInterval(timer);
       clearTimeout(expire);
     };
@@ -300,7 +310,7 @@ export function TableAccess() {
         itens: carrinho.map(i => ({ idProduto: i.idProduto, quantidade: i.quantidade, observacao: i.observacao ?? null }))
       }, session.token, chavePedido.current);
       setUltimoPedido(pedido);
-      setHistoricoPedidos(atual => [pedido, ...atual.filter(p => p.idPedido !== pedido.idPedido)]);
+      setHistoricoPedidos(atual => [...atual.filter(p => p.idPedido !== pedido.idPedido), pedido]);
       setCarrinho([]);
       setAvisoToast(null);
       chavePedido.current = crypto.randomUUID();
@@ -386,9 +396,9 @@ export function TableAccess() {
                   <h2>O que você deseja?</h2>
                   <p className="muted">Mesa {String(session.numeroMesa).padStart(2, '0')} · Cartão {session.codigoCartao}</p>
                 </div>
-                {ultimoPedido && (
+                { (historicoPedidos.length > 0 || ultimoPedido) && (
                   <Button type="button" className="secondary" onClick={() => setTelaMesa('enviado')}>
-                    Ver último pedido (#{ultimoPedido.idPedido})
+                    Acompanhar pedido (#{(ultimoPedido ?? historicoPedidos[historicoPedidos.length - 1])!.idPedido})
                   </Button>
                 )}
               </div>
@@ -589,33 +599,53 @@ export function TableAccess() {
             </div>
           )}
 
-          {/* 5. PEDIDO ENVIADO E HISTÓRICO (Tela 11) */}
-          {!offline && telaMesa === 'enviado' && ultimoPedido && (
-            <div className="menu-gateway" data-testid="pedido-enviado">
-              <span className="confirm-badge success">Pedido enviado</span>
-              <h2>Pedido {ultimoPedido.idPedido}</h2>
-              <p className="muted">Mesa {String(ultimoPedido.numeroMesa).padStart(2, '0')} · Cartão {session.codigoCartao} · carrinho vazio</p>
-              <div className="cart-layout">
-                <div className="cart-list">
-                  {ultimoPedido.itens.map(item => (
-                    <article key={item.idItem} className="cart-item-card">
-                      <h3>{item.quantidade}× {item.nomeProduto}</h3>
-                      <p className="cart-item-meta">{rotuloSetor(item.setor)} · {formatarMoeda(item.subtotal)}</p>
-                      <span className="order-item-badge">{rotuloStatus(item.status)}</span>
-                    </article>
-                  ))}
+          {/* 5. PEDIDO ENVIADO E HISTÓRICO / ACOMPANHAMENTO (US-16, Tela 11) */}
+          {!offline && telaMesa === 'enviado' && (ultimoPedido || historicoPedidos.length > 0) && (() => {
+            const pedidosExibidos = historicoPedidos.length > 0 ? historicoPedidos : (ultimoPedido ? [ultimoPedido] : []);
+            const pedidoPrincipal = pedidosExibidos[pedidosExibidos.length - 1]!;
+            const todosItens = pedidosExibidos.flatMap(p => p.itens.map(item => ({ ...item, idPedido: p.idPedido, dataHora: p.dataHora })));
+            return (
+              <div className="menu-gateway" data-testid="pedido-enviado">
+                <span className="confirm-badge success">Pedido enviado</span>
+                <h2>Pedido {pedidoPrincipal.idPedido}</h2>
+                <p className="muted">Mesa {String(pedidoPrincipal.numeroMesa).padStart(2, '0')} · Cartão {session.codigoCartao} · {carrinho.length === 0 ? 'carrinho vazio' : `${totalItensCarrinho} no carrinho`}</p>
+                <div className="cart-layout">
+                  <div className="cart-list">
+                    {todosItens.map(item => (
+                      <article key={item.idItem} className="cart-item-card" data-item-id={item.idItem}>
+                        <h3>{item.quantidade}× {item.nomeProduto}</h3>
+                        <p className="cart-item-meta">
+                          {rotuloSetor(item.setor)} · {formatarMoeda(item.subtotal)}
+                          {pedidosExibidos.length > 1 ? ` · Pedido #${item.idPedido}` : ''}
+                        </p>
+                        <span className={'order-item-badge ' + item.status.toLowerCase()} data-testid={'status-item-' + item.idItem}>{rotuloStatus(item.status)}</span>
+                      </article>
+                    ))}
+                  </div>
+                  <aside className="cart-summary-card">
+                    <h3>Histórico do pedido</h3>
+                    {pedidosExibidos.map(p => (
+                      <div key={p.idPedido} style={{ marginBottom: 8 }}>
+                        <p className="muted" style={{ margin: '2px 0' }}>
+                          {new Date(p.dataHora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Pedido #{p.idPedido} ({rotuloStatus(p.status).toLowerCase()})
+                        </p>
+                        {p.itens.map(item => (
+                          <p key={item.idItem} className="muted" style={{ margin: '2px 0', fontSize: '0.8rem' }}>
+                            • {item.nomeProduto}: {rotuloStatus(item.status).toLowerCase()}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                    <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
+                    <Button type="button" onClick={() => void api.pedidosComanda(session.idComanda, session.token).then(lista => {
+                      setHistoricoPedidos(lista);
+                      if (lista.length > 0) setUltimoPedido(lista[lista.length - 1]);
+                    }).catch(() => {})}>Acompanhar pedido</Button>
+                  </aside>
                 </div>
-                <aside className="cart-summary-card">
-                  <h3>Histórico do pedido</h3>
-                  <p className="muted">
-                    {new Date(ultimoPedido.dataHora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Pedido recebido ({formatarMoeda(ultimoPedido.total)})
-                  </p>
-                  {historicoPedidos.length > 1 && <p className="muted">{historicoPedidos.length} pedidos enviados nesta sessão.</p>}
-                  <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
-                </aside>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 6. CHAMAR GARÇOM (Tela 12) */}
           {!offline && telaMesa === 'chamado' && (
