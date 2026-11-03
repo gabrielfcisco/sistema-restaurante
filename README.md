@@ -15,7 +15,7 @@ npm run setup:sprint
 npm run dev
 ```
 
-`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API e as quatro janelas Electron. Cozinha e bar consultam suas filas sem login e atualizam por SSE; confira [execução, migration e testes das US-12/13](docs/us-12-us-13.md).
+`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API, os apps desktop e o servidor web móvel do garçom. O telefone deve estar na mesma rede local; abra no navegador o endereço de rede exibido pelo Vite. Garçom e Administração ainda são prévias visuais: as rotas Sprint 3 não estão conectadas. Cozinha e bar consultam suas filas sem login e atualizam por SSE; confira [execução, migration e testes das US-12/13](docs/us-12-us-13.md).
 
 Ao trocar de branch ou receber alterações de dependências, execute `npm ci` novamente na raiz `sistema-restaurante`. Isso atualiza os vínculos dos pacotes internos, incluindo `@restaurante/desktop`. A inicialização verifica a versão do Node e esse pacote antes de abrir as janelas.
 
@@ -27,7 +27,11 @@ npm run dev:recepcao
 npm run dev:mesa
 npm run dev:cozinha
 npm run dev:bar
+npm run dev:administracao
+npm run dev:garcom
 ```
+
+Garçom roda em uma janela Electron com proporções de celular e também pode ser aberto pelo navegador do telefone na rede local usando o endereço `Network` exibido pelo Vite. Administração também roda em Electron.
 
 ## API da sprint 1
 
@@ -59,6 +63,7 @@ npm run db:seed
 | `npm run package:mesa` | Gera pasta executável desktop da mesa |
 | `npm run package:cozinha` | Gera pasta executável desktop da cozinha |
 | `npm run package:bar` | Gera pasta executável desktop do bar |
+| `npm run package:administracao` | Gera pasta executável desktop da administração |
 | `npm run db:generate` | Gera cliente Prisma após mudança de schema |
 | `npm run db:migrate` | Cria/aplica migration em banco de desenvolvimento |
 | `npm run db:studio` | Abre inspeção local do banco |
@@ -69,12 +74,13 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 
 - [Arquitetura e expansão](docs/arquitetura.md)
 - [US-12 e US-13: cozinha e bar](docs/us-12-us-13.md)
+- [Sprint 3: preparação das US-14 a US-19 e US-21](docs/sprint-03.md)
 - [Interfaces, configuração desktop e demonstração da sprint](docs/interfaces.md)
 - [Ambiente e dois computadores](docs/ambiente.md)
 - [Sprint 01 e divisão entre cinco integrantes](docs/sprint-01.md)
 - [Contratos da API](docs/contratos-api.md)
 - [Modelagem e migration da sprint](docs/banco.md)
 
-`apps/api` contém o backend único. `apps/cozinha` e `apps/bar` reutilizam o painel operacional de `packages/ui`, com filas e alterações separadas por setor no servidor. `packages/api-client` e `packages/contracts` também são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
+`apps/api` contém o backend único. `apps/cozinha` e `apps/bar` reutilizam o painel operacional de `packages/ui`, com filas e alterações separadas por setor no servidor. `apps/garcom` é uma web app móvel e `apps/administracao` é desktop Electron; ambos exibem prévias visuais da Sprint 3 sem persistência e serão integrados após a implementação da API. `packages/api-client` e `packages/contracts` também são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
 
-Próximos apps: garçom, caixa e administração. Serão criados em `apps/` quando entrarem nas sprints. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.
+O caixa permanece futuro. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.

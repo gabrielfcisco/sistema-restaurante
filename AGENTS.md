@@ -14,23 +14,35 @@ Monorepo npm com Node/Express, TypeScript, React/Vite, Electron, MySQL/Prisma e 
 
 ## Sprint 2 — US-07 a US-13 (Grupo 9)
 
-Os critérios fornecidos estão consolidados em `docs/sprint-02.md`. A sprint está preparada, não implementada: não adicione handlers, telas funcionais, upload nem migrations nesta etapa. Ao implementar uma história autorizada, use os critérios e as pendências do documento.
+A Sprint 2 está implementada; contratos finais, migrações e verificações das telas de cozinha/bar estão em `docs/us-12-us-13.md`, `docs/sprint-02.md` e `docs/contratos-api.md`. Preserve esses comportamentos ao trabalhar na Sprint 3.
 
 - `apps/mesa`: cardápio, detalhe, montagem, revisão e confirmação de pedido (US-07–11), consumindo a API compartilhada e a sessão de comanda já existente.
-- `apps/cozinha`: workspace Electron/Vite preparado com tela inicial placeholder; o painel em tempo real de itens de comida é US-12 e ainda não está implementado. Por decisão do Grupo 9, o painel não exige login e ficará na rede interna.
-- `apps/bar`: workspace Electron/Vite preparado com tela inicial placeholder; o painel em tempo real de bebidas/itens do setor bar é US-13 e ainda não está implementado. Por decisão do Grupo 9, o painel não exige login e ficará na rede interna.
+- `apps/cozinha` e `apps/bar`: apps operacionais Electron/Vite implementados, usando API comum, SSE e PATCH por setor; consulte `docs/us-12-us-13.md`. Por decisão do Grupo 9, os painéis não exigem login e ficam na rede interna.
 - `apps/recepcao`: preservar fluxos Sprint 1; as histórias fornecidas não justificam mudanças nele.
-- `apps/api`: fonte única para catálogo, disponibilidade, validação de quantidade, criação transacional e filas por setor. As rotas candidatas e permissões em aberto estão em `docs/sprint-02.md` e `docs/contratos-api.md`.
+- `apps/api`: fonte única para catálogo, confirmação transacional de pedidos, status e filas por setor. Os contratos existentes estão em `docs/contratos-api.md`.
 - Produto, categoria, setor, pedido e item já existem no Prisma; verifique as decisões/gaps em `docs/sprint-02.md` antes de propor migration. `Produto.ativo` controla aparição no cardápio; pedido e itens iniciam em `RECEBIDO`, exigindo compatibilidade de schema.
 - Consulte e preserve as capturas de `apps/{mesa,recepcao,cozinha,bar}/screenshots/`. Pastas vazias significam ausência de referência versionada; não invente imagens ou telas.
 - Imagem de teste deve ser versionada em `assets/cardapio/` e referenciada no banco por caminho relativo estável. Nunca persistir bytes/base64 nem caminho absoluto; a URL deve ser servida pela API na rede interna. Imagens de produção/gestão são futuras.
 
+## Sprint 3 — US-14 a US-19 e US-21 (Grupo 9)
+
+O escopo e as decisões de negócio confirmadas da Sprint 3 estão em `docs/sprint-03.md`, incluindo contratos candidatos e impactos de banco. Os workspaces `apps/garcom` e `apps/administracao` têm prévias visuais executáveis, sem integração: não implemente endpoints ou migrations sem solicitação explícita. Histórias relativas ao status do pedido devem reutilizar o serviço/API operacional existente; não duplicar transições nos apps.
+
+O repositório está preparado para iniciar essas histórias, mas isso não significa que a Sprint 3 esteja implementada. Ao receber uma história, leia seus critérios oficiais e a documentação indicada, confira o código/schema/rotas existentes e as referências de tela; implemente somente o escopo solicitado, inclusive API, contratos e interface quando fizerem parte da história. As rotas em `docs/sprint-03.md` são propostas, não endpoints já disponíveis. Não confie apenas nesta documentação: valide cada contrato contra o estado atual do código e registre qualquer divergência ou decisão em aberto antes de assumi-la.
+
+- Módulos da Sprint 3: cozinha/bar e API (US-14), garçom (US-15/17/18), mesa/API (US-16/18/21), administração (US-19). `apps/garcom` e `apps/administracao` têm prévias visuais executáveis, sem integração às rotas Sprint 3.
+- A mesa pode ter várias comandas ativas; na US-17 o garçom lista todas e seleciona uma.
+- `Produto.categoria` é enum hoje; a US-19 migra para categorias persistidas e precisa preservar o catálogo existente.
+- `ItemPedido` não guarda preço histórico; preserve a regra confirmada de preço estável, e não invente snapshot sem decisão.
+- Referências visuais: consultar `apps/<modulo>/screenshots/` e Figma quando acessível. Não inventar capturas ou telas.
+- Acessos sem login só podem ser usados se confirmados e com o limite de rede registrado; não tratar localização do app como autorização.
+
 ## Rotas, persistência e validação
 
-Rotas atuais vivem em `apps/api/src/modules/*/routes.ts` e são montadas em `sprint-routes.ts`; handlers devem ser finos e delegar regras/transações ao serviço. As rotas Sprint 2 estão documentadas como contratos planejados, não existem no servidor. Os painéis operacionais não exigem login por decisão do Grupo 9; confirme o limite de rede do deploy. Resolva as demais pendências registradas sem reabrir decisões já confirmadas. Confirmação do pedido deve gravar cabeçalho e todos os itens atomicamente e associar à comanda ativa validada no servidor.
+Rotas atuais vivem em `apps/api/src/modules/*/routes.ts` e são montadas em `apps/api/src/modules/sprint-routes.ts`; handlers devem ser finos e delegar regras/transações ao serviço. Os contratos candidatos da Sprint 3 estão em `docs/sprint-03.md`; nenhum está implementado. Os painéis existentes e as novas rotas de garçom/administração foram definidos sem login, somente na rede interna, conforme decisão do Grupo 9.
 
 Use `npm run check` na raiz após mudanças relevantes, quando o ambiente permitir. Não aplicar migration em banco desconhecido nem usar dados pessoais reais. Registre falhas ambientais separadas de falhas de código.
 
-## Agente especializado de rotas Sprint 2
+## Perfis de agentes
 
-O perfil operacional `api-sprint2-routes` está em `.agents/agents/api-sprint2-routes.md`. Use suas instruções ao delegar a implementação das rotas de US-07–13. Ele deve implementar apenas contratos confirmados, preservar este arquivo e `docs/sprint-02.md`, e parar para registrar decisão quando uma pendência exigir definição do Grupo 9; não inventar autenticação, semântica de status ou migração.
+O perfil histórico de rotas Sprint 2 está em `.agents/agents/api-sprint2-routes.md`. O perfil para preparação/rotas Sprint 3 está em `.agents/agents/api-sprint3.md`; siga os contratos candidatos de `docs/sprint-03.md` e não implemente sem solicitação explícita.

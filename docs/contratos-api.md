@@ -1,6 +1,6 @@
 # Contratos da API — Sprint 01
 
-As rotas operacionais das US-12/13 estão implementadas e documentadas em [cozinha e bar](us-12-us-13.md): GET de itens, GET de eventos SSE e PATCH de status por setor. As demais rotas da Sprint 2 continuam planejadas.
+As rotas de catálogo/pedidos (US-07 a US-11) e as rotas operacionais das US-12/13 estão implementadas. Para filas, SSE, transições, compatibilidade e testes, consulte [cozinha e bar](us-12-us-13.md). As propostas antigas abaixo são mantidas como referência histórica da preparação; não representam o estado atual quando divergirem dos contratos finais.
 
 Base `/api`, JSON. Rotas organizadas em `apps/api/src/modules/{clientes,mesas,comandas,acessos}/routes.ts`, registradas por `sprint-routes.ts`. Autorização compartilhada em `autorizacao.ts` e transações em `sprint-service.ts`; DTOs em `packages/contracts/src/index.ts`. Não inclui interfaces, leitura da câmera, pedidos ou pagamento.
 
@@ -68,9 +68,9 @@ Rotas técnicas públicas existentes: GET /health (processo), GET /ready (banco,
 
 Não há GET /cartoes/disponiveis: a recepção digita o código físico. Cancelamento individual, CRUD de mesas, login individual e demais sprints não foram adicionados.
 
-## Sprint 2 — contratos planejados (US-07 a US-13, Grupo 9)
+## Sprint 2 — referência da preparação (US-07 a US-13, Grupo 9)
 
-As rotas abaixo são documentação de preparação; **não estão implementadas**. Critérios, gaps de schema e autorização estão detalhados em `docs/sprint-02.md`. Não publicar handlers até implementar validação e autorização correspondentes.
+Esta tabela registra o desenho original. US-07 a US-13 já estão implementadas; em caso de divergência, prevalecem as seções de contrato final e `docs/us-12-us-13.md`. Não usar a tabela como lista de rotas ainda pendentes.
 
 | História | Método e rota planejada | Permissão | Dados/resultado |
 |---|---|---|---|
@@ -86,3 +86,7 @@ As rotas abaixo são documentação de preparação; **não estão implementadas
 | US-13 | PATCH `/bar/itens/:idItem/status` | Sem login (painel na rede interna) | Avança item BAR uma etapa; sequência RECEBIDO → EM_PREPARO → PRONTO → ENTREGUE. |
 
 Itens são roteados pelo `Produto.setor` no servidor: COZINHA ou BAR. Não aceitar `setor` enviado no corpo. Cada confirmação cria um novo Pedido dentro da mesma comanda; itens antigos ficam no histórico/fechamento e nunca são reenviados às filas. Painéis avançam apenas itens do seu setor em sequência e publicam mudanças via SSE. O status agregado do Pedido é o estágio menos avançado de seus itens, recalculado na mesma transação da mudança do item; quando todos estão `ENTREGUE`, o Pedido também fica `ENTREGUE`. Por decisão do Grupo 9, os painéis não exigem login; implantar em rede interna, configurando `HOST` e `CORS_ORIGINS`. GET da fila é o snapshot/reconciliação. Imagem genérica de teste deve ser commitada em `assets/cardapio/` e sua chave relativa persistida em Produto por migration aditiva; upload/admin e imagens reais são futuros.
+
+## Sprint 3 — propostas de preparação (US-14 a US-19 e US-21)
+
+Os contratos candidatos, as permissões confirmadas, fluxos de status e impactos de banco estão em [`docs/sprint-03.md`](sprint-03.md). Nenhum desses endpoints está implementado. Preserve aqui os contratos finais existentes da Sprint 1/2; ao iniciar implementação Sprint 3, promova as propostas aprovadas para esta referência e registre os resultados em `docs/sprint-03.md`.
