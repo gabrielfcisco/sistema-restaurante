@@ -57,6 +57,7 @@ model Mesa {
   status   StatusMesa @default(LIVRE)
   comandas Comanda[]
   dispositivos DispositivoMesa[]
+  chamados Chamada[]
 
   @@map("mesa")
 }
@@ -103,6 +104,24 @@ model Comanda {
   @@index([idMesa], map: "ix_comanda_mesa")
   @@index([status], map: "ix_comanda_status")
   @@map("comanda")
+}
+
+enum StatusChamada {
+  PENDENTE
+  CONCLUIDA
+  CANCELADA
+}
+
+model Chamada {
+  idChamada Int @id @default(autoincrement()) @map("id_chamada") @db.UnsignedInt
+  idMesa Int @map("id_mesa") @db.UnsignedInt
+  status StatusChamada @default(PENDENTE)
+  criadaEm DateTime @default(now()) @map("criada_em") @db.DateTime(0)
+  finalizadaEm DateTime? @map("finalizada_em") @db.DateTime(0)
+  mesa Mesa @relation(fields: [idMesa], references: [idMesa], onDelete: Restrict)
+  @@index([idMesa, status], map: "ix_chamada_mesa_status")
+  @@index([status, criadaEm], map: "ix_chamada_status_criada")
+  @@map("chamada")
 }
 
 model Cartao {

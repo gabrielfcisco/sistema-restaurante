@@ -1,5 +1,5 @@
 
-import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, PedidosComandaEventoDto } from '@restaurante/contracts';
+import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, PedidosComandaEventoDto, ChamadaDto, ExtratoComandaDto } from '@restaurante/contracts';
 export interface ApiRequest { path: string; method: string; body?: unknown; sessionToken?: string; idempotencyKey?: string }
 export interface ApiResult { status: number; data?: unknown }
 export type ApiTransport = (request: ApiRequest) => Promise<ApiResult>;
@@ -53,6 +53,44 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     detalheProduto: (token: string, idProduto: number) => request<ProdutoResumoDto>('/cardapio/produtos/' + idProduto, 'GET', undefined, token),
     confirmarPedido: (idComanda: number, input: CriarPedidoInput, token: string, key: string) => request<PedidoConfirmadoDto>('/atendimentos/' + idComanda + '/pedidos', 'POST', input, token, key),
     pedidosComanda: (idComanda: number, token: string) => request<PedidoConfirmadoDto[]>('/atendimentos/' + idComanda + '/pedidos', 'GET', undefined, token),
+    extratoComanda: (idComanda: number, token: string) => request<ExtratoComandaDto>('/atendimentos/' + idComanda + '/extrato', 'GET', undefined, token),
+    chamarGarcom: (idComanda: number, token: string) => request<ChamadaDto>('/atendimentos/' + idComanda + '/chamados', 'POST', {}, token),
+    chamados: () => request<ChamadaDto[]>('/garcom/chamados'),
+    concluirChamada: (idChamada: number) => request<ChamadaDto>('/garcom/chamados/' + idChamada + '/status', 'PATCH', { status: 'CONCLUIDA' }),
+    acompanharChamados(callback: (chamados: ChamadaDto[]) => void, onError?: (message: string) => void) {
+      let stopped = false;
+      let controller: AbortController | undefined;
+      let retry: ReturnType<typeof setTimeout> | undefined;
+      const connect = async () => {
+        if (stopped) return;
+        try {
+          callback(await request<ChamadaDto[]>('/garcom/chamados'));
+          controller = new AbortController();
+          const response = await fetch(base + '/garcom/eventos', { headers: { Accept: 'text/event-stream' }, signal: controller.signal });
+          if (!response.ok || !response.body) throw new Error('stream indisponível');
+          const reader = response.body.getReader(), decoder = new TextDecoder();
+          let buffer = '';
+          while (!stopped) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let boundary: number;
+            while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+              const frame = buffer.slice(0, boundary); buffer = buffer.slice(boundary + 2);
+              const data = frame.split('\n').find(line => line.startsWith('data: '));
+              if (frame.includes('event: chamados') && data) {
+                try { callback((JSON.parse(data.slice(6)) as { chamados: ChamadaDto[] }).chamados); } catch { /* frame inválido */ }
+              }
+            }
+          }
+        } catch (error) {
+          if (!stopped) onError?.(error instanceof Error ? error.message : 'Não foi possível atualizar os chamados.');
+        }
+        if (!stopped) retry = setTimeout(() => void connect(), 3000);
+      };
+      void connect();
+      return () => { stopped = true; controller?.abort(); clearTimeout(retry); };
+    },
     acompanharPedidosComanda: (idComanda: number, token: string, callbacks: AcompanharPedidosCallbacks) => {
       let stopped = false, revision = 0;
       let abortController: AbortController | undefined;

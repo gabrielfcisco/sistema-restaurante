@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, createApiClient } from '@restaurante/api-client';
-import type { CategoriaCardapio, ItemCarrinhoDto, PedidoConfirmadoDto, ProdutoResumoDto, SessaoMesaDto } from '@restaurante/contracts';
+import type { CategoriaCardapio, ExtratoComandaDto, ItemCarrinhoDto, PedidoConfirmadoDto, ProdutoResumoDto, SessaoMesaDto } from '@restaurante/contracts';
 import { AppShell, Button } from '@restaurante/ui';
 import { browserCamera } from './platform/camera';
 
@@ -57,10 +57,11 @@ export function TableAccess() {
 
   // Estados do Carrinho e Pedido (US-09, US-10, US-11)
   const [carrinho, setCarrinho] = useState<ItemCarrinhoDto[]>([]);
-  const [telaMesa, setTelaMesa] = useState<'cardapio' | 'detalhe' | 'carrinho' | 'confirmar' | 'enviado' | 'chamado' | 'pedir-conta' | 'conta-solicitada'>('cardapio');
+  const [telaMesa, setTelaMesa] = useState<'cardapio' | 'detalhe' | 'carrinho' | 'confirmar' | 'enviado' | 'chamado' | 'extrato' | 'pedir-conta' | 'conta-solicitada'>('cardapio');
   const [avisoToast, setAvisoToast] = useState<{ texto: string; linkText?: string } | null>(null);
   const [ultimoPedido, setUltimoPedido] = useState<PedidoConfirmadoDto | null>(null);
   const [historicoPedidos, setHistoricoPedidos] = useState<PedidoConfirmadoDto[]>([]);
+  const [extrato, setExtrato] = useState<ExtratoComandaDto | null>(null);
 
   const chavePedido = useRef(crypto.randomUUID());
   const video = useRef<HTMLVideoElement>(null);
@@ -78,6 +79,7 @@ export function TableAccess() {
     setAvisoToast(null);
     setUltimoPedido(null);
     setHistoricoPedidos([]);
+    setExtrato(null);
     chavePedido.current = crypto.randomUUID();
   }
 
@@ -326,6 +328,22 @@ export function TableAccess() {
     }
   }
 
+  async function chamarGarcom() {
+    if (!session || locked.current) return;
+    locked.current = true; setBusy(true); setError('');
+    try { await api.chamarGarcom(session.idComanda, session.token); setTelaMesa('chamado'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível chamar o garçom. Tente novamente.'); }
+    finally { locked.current = false; setBusy(false); }
+  }
+
+  async function abrirExtrato() {
+    if (!session || locked.current) return;
+    locked.current = true; setBusy(true); setError('');
+    try { setExtrato(await api.extratoComanda(session.idComanda, session.token)); setTelaMesa('extrato'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível carregar o extrato.'); }
+    finally { locked.current = false; setBusy(false); }
+  }
+
   const totalItensCarrinho = carrinho.reduce((soma, item) => soma + item.quantidade, 0);
   const valorTotalCarrinho = Math.round(carrinho.reduce((soma, item) => soma + item.precoUnitario * item.quantidade, 0) * 100) / 100;
   const itensCozinhaResumo = carrinho.filter(i => i.setor === 'COZINHA').map(i => `${i.quantidade}× ${i.nome}`).join(', ');
@@ -364,8 +382,9 @@ export function TableAccess() {
               <p className="session-number">Mesa {String(session.numeroMesa).padStart(2, '0')} · Comanda #{session.idComanda} · Cartão {session.codigoCartao}</p>
             </div>
             <div className="mesa-topbar-actions">
+              <Button type="button" className="secondary" onClick={() => void abrirExtrato()} disabled={busy || offline}>Ver extrato</Button>
               <Button type="button" className="secondary" onClick={() => setTelaMesa('pedir-conta')} disabled={busy || offline}>Pedir conta</Button>
-              <Button type="button" className="secondary" onClick={() => setTelaMesa('chamado')} disabled={busy || offline}>Chamar garçom</Button>
+              <Button type="button" className="secondary" onClick={() => void chamarGarcom()} disabled={busy || offline}>Chamar garçom</Button>
               <Button type="button" onClick={abrirRevisaoPedido} disabled={busy || offline}>
                 🛒 Carrinho <span className="cart-badge" data-testid="cart-count">{totalItensCarrinho}</span>
               </Button>
@@ -656,6 +675,21 @@ export function TableAccess() {
               <div className="table-actions">
                 <Button type="button" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
               </div>
+            </div>
+          )}
+
+          {!offline && telaMesa === 'extrato' && extrato && (
+            <div className="menu-gateway" data-testid="extrato-comanda">
+              <span className="confirm-badge">Extrato da comanda</span>
+              <h2>Comanda #{extrato.idComanda}</h2>
+              {extrato.itens.length === 0 ? <p className="muted">Ainda não há pedidos confirmados nesta comanda.</p> :
+                <div className="cart-list">{extrato.itens.map(item => <article className="cart-item-card" key={item.idItem}>
+                  <h3>{item.quantidade}× {item.nomeProduto}</h3>
+                  <p className="cart-item-meta">{formatarMoeda(item.precoUnitario)} cada · {rotuloStatus(item.status)} · Pedido #{item.idPedido}</p>
+                  <p className="cart-item-subtotal">{formatarMoeda(item.subtotal)}</p>
+                </article>)}</div>}
+              <aside className="cart-summary-card"><h3>Total</h3><p className="cart-total-value" data-testid="extrato-total">{formatarMoeda(extrato.total)}</p></aside>
+              <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
             </div>
           )}
 

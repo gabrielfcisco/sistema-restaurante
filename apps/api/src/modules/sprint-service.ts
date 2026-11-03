@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto, AtendimentoMesaDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, StatusPreparo } from '@restaurante/contracts';
+import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto, AtendimentoMesaDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, StatusPreparo, ChamadaDto, ExtratoComandaDto } from '@restaurante/contracts';
 import type { PrismaClient, Prisma, Comanda, Cartao, Produto } from '../generated/prisma/client';
 import { ErroApi, exigir, telefone } from './validacao';
 import { statusAgregado, statusPreparo } from './operacao/service';
@@ -37,6 +37,10 @@ export interface SprintService {
   confirmarPedido(idComanda: number, input: CriarPedidoInput, token: string, key: string): Promise<{ dto: PedidoConfirmadoDto; replay: boolean }>;
   listarPedidosComanda(idComanda: number, token: string): Promise<PedidoConfirmadoDto[]>;
   listarPedidosComandaInterno?(idComanda: number): Promise<PedidoConfirmadoDto[]>;
+  criarChamada(idComanda: number, token: string): Promise<ChamadaDto>;
+  listarChamados(): Promise<ChamadaDto[]>;
+  concluirChamada(idChamada: number): Promise<ChamadaDto>;
+  extratoComanda(idComanda: number, token: string): Promise<ExtratoComandaDto>;
 }
 export function erroBanco(error: unknown): Error {
   if (error instanceof ErroApi) return error;
@@ -149,6 +153,7 @@ export class PrismaSprintService implements SprintService {
       const mesa = await this.bloquearMesa(tx, idMesa);
       exigir(mesa.status !== 'MANUTENCAO', 409, 'MESA_INDISPONIVEL', 'Mesa em manutenção não pode ser liberada por este fluxo.');
       const now = new Date();
+      await tx.chamada.updateMany({ where: { idMesa, status: 'PENDENTE' }, data: { status: 'CANCELADA', finalizadaEm: now } });
       await tx.sessaoMesa.updateMany({ where: { comanda: { idMesa }, revogadaEm: null }, data: { revogadaEm: now } });
       await tx.vinculoCartao.deleteMany({ where: { comanda: { idMesa } } });
       const closed = await tx.comanda.updateMany({ where: { idMesa, ...filtroAtivo }, data: { status: 'FECHADA', dataFechamento: now } });
@@ -290,6 +295,49 @@ export class PrismaSprintService implements SprintService {
     const sessao = await this.sessao(token);
     exigir(sessao.idComanda === idComanda, 403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
     return this.listarPedidosComandaInterno(idComanda);
+  }
+  async criarChamada(idComanda: number, token: string): Promise<ChamadaDto> {
+    return this.transacao(async tx => {
+      const sessao = await tx.sessaoMesa.findUnique({ where: { tokenHash: hash(token) }, include: { comanda: { include: { mesa: true, cartao: true, vinculoAtivo: true } } } });
+      exigir(sessao && !sessao.revogadaEm && sessao.expiraEm.getTime() > Date.now(), 401, 'SESSAO_INVALIDA', 'Sessão ausente, expirada ou revogada.');
+      const c = sessao.comanda;
+      exigir(ativos.some(s => s === c.status) && c.dataFechamento === null && c.vinculoAtivo && c.vinculoAtivo.idCartao === c.idCartao && c.cartao && c.mesa.status === 'OCUPADA', 401, 'SESSAO_INVALIDA', 'Atendimento encerrado ou alterado. Identifique seu cartão novamente.');
+      exigir(c.idComanda === idComanda, 403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
+      await this.bloquearMesa(tx, c.idMesa);
+      const atual = await tx.sessaoMesa.findUnique({ where: { tokenHash: hash(token) }, include: { comanda: { include: { mesa: true, cartao: true, vinculoAtivo: true } } } });
+      exigir(atual && !atual.revogadaEm && atual.expiraEm.getTime() > Date.now(), 401, 'SESSAO_INVALIDA', 'Sessão ausente, expirada ou revogada.');
+      const comandaAtual = atual.comanda;
+      exigir(comandaAtual.idComanda === idComanda && ativos.some(s => s === comandaAtual.status) && comandaAtual.dataFechamento === null
+        && comandaAtual.vinculoAtivo && comandaAtual.vinculoAtivo.idCartao === comandaAtual.idCartao && comandaAtual.cartao && comandaAtual.mesa.status === 'OCUPADA',
+        401, 'SESSAO_INVALIDA', 'Atendimento encerrado ou alterado. Identifique seu cartão novamente.');
+      const existente = await tx.chamada.findFirst({ where: { idMesa: c.idMesa, status: 'PENDENTE' }, include: { mesa: true } });
+      const chamada = existente ?? await tx.chamada.create({ data: { idMesa: c.idMesa }, include: { mesa: true } });
+      return this.chamadaDto(chamada);
+    });
+  }
+  async listarChamados(): Promise<ChamadaDto[]> {
+    const rows = await this.db().chamada.findMany({ where: { status: 'PENDENTE' }, include: { mesa: true }, orderBy: [{ criadaEm: 'asc' }, { idChamada: 'asc' }] });
+    return rows.map(row => this.chamadaDto(row));
+  }
+  async concluirChamada(idChamada: number): Promise<ChamadaDto> {
+    return this.transacao(async tx => {
+      const row = await tx.chamada.findUnique({ where: { idChamada }, include: { mesa: true } });
+      exigir(row, 404, 'CHAMADA_INEXISTENTE', 'Chamada não encontrada.');
+      await this.bloquearMesa(tx, row.idMesa);
+      const updated = await tx.chamada.updateMany({ where: { idChamada, status: 'PENDENTE' }, data: { status: 'CONCLUIDA', finalizadaEm: new Date() } });
+      exigir(updated.count === 1, 409, 'CHAMADA_CONCLUIDA', 'A chamada já foi concluída ou cancelada.');
+      const result = await tx.chamada.findUniqueOrThrow({ where: { idChamada }, include: { mesa: true } });
+      return this.chamadaDto(result);
+    });
+  }
+  async extratoComanda(idComanda: number, token: string): Promise<ExtratoComandaDto> {
+    const pedidos = await this.listarPedidosComanda(idComanda, token);
+    const itens = pedidos.flatMap(p => p.itens.map(i => ({ idItem: i.idItem, idPedido: p.idPedido, nomeProduto: i.nomeProduto, quantidade: i.quantidade, precoUnitario: i.precoUnitario, subtotal: i.subtotal, status: i.status })));
+    const totalCentavos = itens.reduce((sum, i) => sum + Math.round(i.subtotal * 100), 0);
+    return { idComanda, itens, total: totalCentavos / 100 };
+  }
+  private chamadaDto(row: { idChamada: number; idMesa: number; status: 'PENDENTE' | 'CONCLUIDA' | 'CANCELADA'; criadaEm: Date; mesa: { numero: number } }): ChamadaDto {
+    return { idChamada: row.idChamada, idMesa: row.idMesa, numeroMesa: row.mesa.numero, status: row.status, criadaEm: row.criadaEm.toISOString() };
   }
   async listarPedidosComandaInterno(idComanda: number): Promise<PedidoConfirmadoDto[]> {
     const comanda = await this.db().comanda.findUnique({

@@ -42,6 +42,12 @@ export function comandasRoutes(service: SprintService, config: AccessConfig, fee
     const idComanda = idRota(req.params.idComanda);
     res.json(await service.listarPedidosComanda(idComanda, token));
   });
+  router.get('/:idComanda/extrato', async (req, res) => {
+    res.json(await service.extratoComanda(idRota(req.params.idComanda), bearer(req)));
+  });
+  router.post('/:idComanda/chamados', async (req, res) => {
+    res.status(201).json(await service.criarChamada(idRota(req.params.idComanda), bearer(req)));
+  });
   router.get('/:idComanda/eventos', async (req, res) => {
     const token = bearer(req);
     const idComanda = idRota(req.params.idComanda);

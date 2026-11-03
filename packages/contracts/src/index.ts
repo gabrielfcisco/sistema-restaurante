@@ -48,6 +48,10 @@ export interface AlterarStatusItemInput { statusAtual: StatusFila; status: Statu
 export interface StatusItemDto { idItem: number; status: StatusPreparo; statusPedido: StatusPreparo }
 export interface FilaEventoDto { itens: ItemFilaDto[] }
 export interface PedidosComandaEventoDto { pedidos: PedidoConfirmadoDto[] }
+export type StatusChamada = 'PENDENTE' | 'CONCLUIDA' | 'CANCELADA';
+export interface ChamadaDto { idChamada: number; idMesa: number; numeroMesa: number; status: StatusChamada; criadaEm: string }
+export interface ExtratoComandaDto { idComanda: number; itens: Array<{ idItem: number; idPedido: number; nomeProduto: string; quantidade: number; precoUnitario: number; subtotal: number; status: StatusPreparo }>; total: number }
+export interface ChamadosEventoDto { chamados: ChamadaDto[] }
 
 export type CategoriaCardapio = 'PRATO' | 'SOBREMESA' | 'BEBIDA';
 export interface ProdutoResumoDto {

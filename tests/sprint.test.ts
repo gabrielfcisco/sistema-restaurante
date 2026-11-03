@@ -199,6 +199,48 @@ test('US-10/11: confirmação de pedido exige sessão, chave de idempotência, i
   });
 });
 
+test('US-18/21: cria chamadas autenticadas sem duplicação, lista/conclui e consulta extrato somente da própria comanda', async () => {
+  const sessao = 'sessao-us18-us21-ficticia-000000000';
+  const extrato = { idComanda: 1, itens: [{ idItem: 1, idPedido: 10, nomeProduto: 'Prato fictício', quantidade: 2, precoUnitario: 0.1, subtotal: 0.2, status: 'EM_PREPARO' as const }], total: 0.2 };
+  let concluidos = 0;
+  await http(async url => {
+    const semSessao = await fetch(url + '/atendimentos/1/extrato');
+    assert.equal(semSessao.status, 401);
+    assert.equal((await fetch(url + '/atendimentos/2/extrato', { headers: { Authorization: `Bearer ${sessao}` } })).status, 403);
+    const chamada = await post(url + '/atendimentos/1/chamados', {}, sessao);
+    assert.equal(chamada.status, 201);
+    assert.equal((await chamada.json()).idChamada, 5);
+    assert.equal((await post(url + '/atendimentos/1/chamados', {}, sessao)).status, 201);
+    const snapshot = await fetch(url + '/garcom/chamados');
+    assert.equal(snapshot.status, 200);
+    assert.equal((await snapshot.json()).length, 1);
+    const invalid = await fetch(url + '/garcom/chamados/5/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'PENDENTE' }) });
+    assert.equal(invalid.status, 400);
+    const done = await fetch(url + '/garcom/chamados/5/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'CONCLUIDA' }) });
+    assert.equal(done.status, 200);
+    assert.equal((await done.json()).status, 'CONCLUIDA');
+    assert.equal(concluidos, 1);
+    const response = await fetch(url + '/atendimentos/1/extrato', { headers: { Authorization: `Bearer ${sessao}` } });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), extrato);
+  }, {
+    criarChamada: async (idComanda, token) => {
+      assert.equal(token, sessao); assert.equal(idComanda, 1);
+      return { idChamada: 5, idMesa: 8, numeroMesa: 8, status: 'PENDENTE', criadaEm: '2026-11-03T12:00:00.000Z' };
+    },
+    listarChamados: async () => [{ idChamada: 5, idMesa: 8, numeroMesa: 8, status: 'PENDENTE', criadaEm: '2026-11-03T12:00:00.000Z' }],
+    concluirChamada: async idChamada => {
+      assert.equal(idChamada, 5); concluidos++;
+      return { idChamada, idMesa: 8, numeroMesa: 8, status: 'CONCLUIDA', criadaEm: '2026-11-03T12:00:00.000Z' };
+    },
+    extratoComanda: async (idComanda, token) => {
+      assert.equal(token, sessao);
+      if (idComanda !== 1) throw new ErroApi(403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
+      return extrato;
+    }
+  });
+});
+
 test('US-07: cardápio por categorias exige sessão, filtra produtos ativos e valida parâmetros', async () => {
   const sessaoToken = 'sessao-mesa-valida-00000000000000';
   await http(async url => {

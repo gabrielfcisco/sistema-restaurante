@@ -89,4 +89,10 @@ Itens são roteados pelo `Produto.setor` no servidor: COZINHA ou BAR. Não aceit
 
 ## Sprint 3 — rotas e propostas (US-14 a US-19 e US-21)
 
-As rotas das **US-14** (`PATCH /cozinha/itens/:idItem/status` e `PATCH /bar/itens/:idItem/status` limitados a `RECEBIDO → EM_PREPARO → PRONTO`) e **US-16** (`GET /atendimentos/:idComanda/pedidos` e `GET /atendimentos/:idComanda/eventos` com Bearer da sessão vinculada) estão implementadas. Os demais contratos candidatos, permissões confirmadas, fluxos de status e impactos de banco estão em [`docs/sprint-03.md`](sprint-03.md). Preserve aqui os contratos finais existentes da Sprint 1/2.
+As rotas das **US-14**, **US-16**, **US-18** e **US-21** estão implementadas. US-18 persiste chamadas, expõe o snapshot e eventos SSE para o garçom e conclui chamadas por PATCH; o POST de chamada usa lock da mesa para retornar a pendência existente. A liberação cancela chamadas pendentes atomicamente. US-21 expõe extrato autenticado com itens de pedidos confirmados e preços do produto. Verifique os detalhes e a migration em [`docs/sprint-03.md`](sprint-03.md). Preserve os contratos finais existentes da Sprint 1/2.
+
+| US-18 | POST `/atendimentos/:idComanda/chamados` | Bearer da sessão vinculada | 201 `ChamadaDto`; chamada pendente existente da mesa é retornada sem duplicar. |
+| US-18 | GET `/garcom/chamados` | Sem login, rede interna | Snapshot das chamadas pendentes, ordenado por criação. |
+| US-18 | GET `/garcom/eventos` (SSE) | Sem login, rede interna | Eventos `chamados` com snapshot da fila; reconexão pode usar GET. |
+| US-18 | PATCH `/garcom/chamados/:idChamada/status` | Sem login, rede interna | `{status:"CONCLUIDA"}`; conflito se já concluída/cancelada. |
+| US-21 | GET `/atendimentos/:idComanda/extrato` | Bearer da sessão vinculada | Itens de pedidos confirmados, qualquer status, com quantidade, preço, subtotal e total em moeda. |

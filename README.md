@@ -81,6 +81,6 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 - [Contratos da API](docs/contratos-api.md)
 - [Modelagem e migration da sprint](docs/banco.md)
 
-`apps/api` contém o backend único. `apps/cozinha` e `apps/bar` reutilizam o painel operacional de `packages/ui`, com filas e alterações separadas por setor no servidor. `apps/garcom` é uma web app móvel e `apps/administracao` é desktop Electron; ambos exibem prévias visuais da Sprint 3 sem persistência e serão integrados após a implementação da API. `packages/api-client` e `packages/contracts` também são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
+`apps/api` contém o backend único. `apps/cozinha` e `apps/bar` reutilizam o painel operacional de `packages/ui`, com filas e alterações separadas por setor no servidor. `apps/garcom` é uma web app móvel e `apps/administracao` é desktop Electron. O garçom integra a fila de chamadas (US-18); os demais fluxos de Sprint 3 ainda são prévias visuais. `packages/api-client` e `packages/contracts` também são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
 
 O caixa permanece futuro. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.

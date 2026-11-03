@@ -28,9 +28,9 @@ A Sprint 2 está implementada; contratos finais, migrações e verificações da
 
 O escopo e as decisões de negócio confirmadas da Sprint 3 estão em `docs/sprint-03.md`, incluindo contratos candidatos e impactos de banco. Os workspaces `apps/garcom` e `apps/administracao` têm prévias visuais executáveis, sem integração: não implemente endpoints ou migrations sem solicitação explícita. Histórias relativas ao status do pedido devem reutilizar o serviço/API operacional existente; não duplicar transições nos apps.
 
-O repositório está preparado para iniciar essas histórias, mas isso não significa que a Sprint 3 esteja implementada. Ao receber uma história, leia seus critérios oficiais e a documentação indicada, confira o código/schema/rotas existentes e as referências de tela; implemente somente o escopo solicitado, inclusive API, contratos e interface quando fizerem parte da história. As rotas em `docs/sprint-03.md` são propostas, não endpoints já disponíveis. Não confie apenas nesta documentação: valide cada contrato contra o estado atual do código e registre qualquer divergência ou decisão em aberto antes de assumi-la.
+US-18 e US-21 foram implementadas em API, contratos, cliente e telas da mesa/garçom; as demais histórias da Sprint 3 não estão implementadas. Ao receber uma história, leia seus critérios oficiais e a documentação indicada, confira o código/schema/rotas existentes e as referências de tela; implemente somente o escopo solicitado. As rotas não marcadas como implementadas em `docs/sprint-03.md` continuam propostas. Não confie apenas nesta documentação: valide cada contrato contra o estado atual do código e registre qualquer divergência ou decisão em aberto antes de assumi-la.
 
-- Módulos da Sprint 3: cozinha/bar e API (US-14), garçom (US-15/17/18), mesa/API (US-16/18/21), administração (US-19). `apps/garcom` e `apps/administracao` têm prévias visuais executáveis, sem integração às rotas Sprint 3.
+- Módulos da Sprint 3: cozinha/bar e API (US-14), garçom (US-15/17/18), mesa/API (US-16/18/21), administração (US-19). US-18 está integrada na mesa e no garçom; os demais fluxos de garçom e administração seguem como prévias visuais.
 - A mesa pode ter várias comandas ativas; na US-17 o garçom lista todas e seleciona uma.
 - `Produto.categoria` é enum hoje; a US-19 migra para categorias persistidas e precisa preservar o catálogo existente.
 - `ItemPedido` não guarda preço histórico; preserve a regra confirmada de preço estável, e não invente snapshot sem decisão.
@@ -39,7 +39,7 @@ O repositório está preparado para iniciar essas histórias, mas isso não sign
 
 ## Rotas, persistência e validação
 
-Rotas atuais vivem em `apps/api/src/modules/*/routes.ts` e são montadas em `apps/api/src/modules/sprint-routes.ts`; handlers devem ser finos e delegar regras/transações ao serviço. Os contratos candidatos da Sprint 3 estão em `docs/sprint-03.md`; nenhum está implementado. Os painéis existentes e as novas rotas de garçom/administração foram definidos sem login, somente na rede interna, conforme decisão do Grupo 9.
+Rotas atuais vivem em `apps/api/src/modules/*/routes.ts` e são montadas em `apps/api/src/modules/sprint-routes.ts`; handlers devem ser finos e delegar regras/transações ao serviço. US-18 e US-21 já estão implementadas; as outras rotas candidatas da Sprint 3 estão em `docs/sprint-03.md`. Os painéis existentes e as novas rotas de garçom/administração foram definidos sem login, somente na rede interna, conforme decisão do Grupo 9.
 
 Use `npm run check` na raiz após mudanças relevantes, quando o ambiente permitir. Não aplicar migration em banco desconhecido nem usar dados pessoais reais. Registre falhas ambientais separadas de falhas de código.
 
