@@ -1,5 +1,7 @@
 # Módulo Mesa — Grupo 9
 
+US-19: categorias/nome/status vêm da API, inclusive categorias ativas sem produtos. Preservar chaves textuais e sessão; a revalidação existente de 15s também reconcilia catálogo. Não aceitar produto de categoria inativa na confirmação (regra no backend). Esta integração não implementa acompanhamento US-16, chamadas US-18 ou extrato US-21.
+
 Leia o `AGENTS.md` da raiz do repositório e consulte `screenshots/` e referências Figma antes de alterar interface. Este app React/Vite/Electron é cliente HTTP; não importa banco, Prisma, segredos, Node ou internals de outros apps. Reutilize `packages/ui`, `packages/api-client` e `packages/contracts`.
 
 Preserve US-01–13 e o acesso temporário existente. Para US-16, exibir todos os itens/status da comanda da sessão e usar SSE autenticado e escopado a essa comanda, com snapshot na abertura/reconexão; nunca incluir token em URL nem aceitar outra comanda. Essa integração ainda precisa ser implementada: confira API, contratos, cliente e publicação atual de eventos antes de adicionar código; a rota candidata em `docs/sprint-03.md` não é funcional ainda. US-18 permite acionar chamada de garçom vinculada à mesa, sem duplicar chamada pendente. US-21 exibe extrato de todos os itens de pedidos confirmados, inclusive em preparo; rascunhos não entram. Preço é lido da API e estável durante operação. Não implemente histórias não solicitadas. Use português e mantenha Electron seguro (isolamento, sandbox e Node desligado no renderer).

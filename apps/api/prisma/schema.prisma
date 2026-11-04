@@ -7,10 +7,12 @@ datasource db {
   provider = "mysql"
 }
 
-enum CategoriaProduto {
-  PRATO
-  SOBREMESA
-  BEBIDA
+model Categoria {
+  idCategoria String @id @default(cuid()) @map("id_categoria") @db.VarChar(32)
+  nome String @unique(map: "uq_categoria_nome") @db.VarChar(120)
+  ativo Boolean @default(true)
+  produtos Produto[]
+  @@map("categoria")
 }
 
 enum SetorProduto {
@@ -73,7 +75,8 @@ model Produto {
   nome      String           @db.VarChar(120)
   descricao String?          @db.VarChar(500)
   preco     Decimal          @db.Decimal(10, 2)
-  categoria CategoriaProduto
+  categoria String @db.VarChar(32)
+  grupo Categoria @relation(fields: [categoria], references: [idCategoria], onDelete: Restrict, onUpdate: Cascade)
   setor     SetorProduto
   ativo     Boolean          @default(true)
   itens     ItemPedido[]

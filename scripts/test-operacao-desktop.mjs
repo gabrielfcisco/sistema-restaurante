@@ -48,8 +48,9 @@ try {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   if (!ready) throw new Error('API descartável não iniciou.');
-  await run(process.execPath, ['node_modules/electron/cli.js', 'scripts/smoke-operacao.mjs'], env);
-  const statuses = await connection.query('SELECT status FROM item_pedido WHERE id_item IN (1,2) ORDER BY id_item');
+  const sprint3 = process.argv.includes('--sprint3');
+  await run(process.execPath, ['node_modules/electron/cli.js', sprint3 ? 'scripts/smoke-sprint3.mjs' : 'scripts/smoke-operacao.mjs'], env);
+  const statuses = await connection.query('SELECT status FROM item_pedido WHERE id_item IN (' + (sprint3 ? '5' : '1,2') + ') ORDER BY id_item');
   if (statuses.some(row => row.status !== 'ENTREGUE')) throw new Error('Interface não persistiu a entrega dos itens.');
   console.log('Fluxo dos dois painéis confirmado no banco.');
 } finally {

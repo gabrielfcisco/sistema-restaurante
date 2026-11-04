@@ -1,5 +1,11 @@
 # Sistema de restaurante — Grupo 9
 
+**Sprint 3 — US-15/17/19:** garçom já consulta itens prontos, confirma entrega e consulta comandas por mesa; administração gerencia categorias persistidas. As referências a prévias destes fluxos abaixo são históricas. Chamadas, acompanhamento do cliente e extrato US-16/18/21 não integram esta entrega.
+
+Antes de usar, revisar/aplicar em um banco de desenvolvimento conhecido a migration `20261103000000_categorias` e executar `npm run db:generate`. Ela preserva produtos e troca o enum por FK textual em Categoria. O servidor não aplica migrations automaticamente. Garçom usa a API na porta 3333 do mesmo host quando aberto no navegador; `VITE_API_URL` sobrescreve o endereço e também configura o build da administração. Configure CORS_ORIGINS com as origens de garçom (5177) e administração (5178). Acesso da equipe sem login requer rede interna/firewall.
+
+Verificações: `npm run check`; `RUN_MYSQL_TESTS=1` com `TEST_DATABASE_URL` local para integração; `npm run test:sprint3:desktop` após build, com a mesma variável, testa interfaces Electron ocultas contra banco/API descartáveis. Veja contratos finais em `docs/contratos-api.md` e resultados em `docs/sprint-03.md`.
+
 Monorepo com API Node/Express e aplicativos React/Electron separados. Sprint 2: os painéis da cozinha (US-12) e do bar (US-13) estão implementados sobre a base da Sprint 1. Mesa, recepção, cozinha e bar compartilham a mesma API e o banco MySQL.
 
 ## Começar

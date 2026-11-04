@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, createApiClient } from '@restaurante/api-client';
-import type { CategoriaCardapio, ItemCarrinhoDto, PedidoConfirmadoDto, ProdutoResumoDto, SessaoMesaDto } from '@restaurante/contracts';
+import type { CategoriaCardapio, CategoriaDto, ItemCarrinhoDto, PedidoConfirmadoDto, ProdutoResumoDto, SessaoMesaDto } from '@restaurante/contracts';
 import { AppShell, Button } from '@restaurante/ui';
 import { browserCamera } from './platform/camera';
 
@@ -49,7 +49,8 @@ export function TableAccess() {
 
   // Estados do Cardápio (US-07)
   const [produtos, setProdutos] = useState<ProdutoResumoDto[]>([]);
-  const [categoriaFiltro, setCategoriaFiltro] = useState<'TODOS' | 'COMIDAS' | 'BEBIDAS'>('TODOS');
+  const [categoriaFiltro, setCategoriaFiltro] = useState('');
+  const [categorias, setCategorias] = useState<CategoriaDto[]>([]);
 
   // Estados do Detalhe do Produto (US-08)
   const [produtoDetalhe, setProdutoDetalhe] = useState<ProdutoResumoDto | null>(null);
@@ -70,7 +71,8 @@ export function TableAccess() {
 
   function limparEstadoCliente() {
     setProdutos([]);
-    setCategoriaFiltro('TODOS');
+    setCategoriaFiltro('');
+    setCategorias([]);
     setProdutoDetalhe(null);
     setQuantidadeDetalhe(1);
     setCarrinho([]);
@@ -174,17 +176,17 @@ export function TableAccess() {
 
     const loadCatalog = async () => {
       try {
-        const lista = await api.produtosCardapio(session.token);
-        if (active) setProdutos(lista);
+        const [lista, grupos] = await Promise.all([api.produtosCardapio(session.token), api.categoriasDetalhadas(session.token)]);
+        if (active) { setProdutos(lista); setCategorias(grupos); setCategoriaFiltro(atual => grupos.some(c => c.idCategoria === atual) ? atual : ''); }
       } catch {
-        /* Catálogo pode ser recarregado na próxima verificação */
+        if (active) setError('Não foi possível atualizar o cardápio. Tentaremos novamente na próxima verificação.');
       }
     };
 
     const check = async () => {
       try {
         await api.sessao(session.token);
-        if (active) { setOffline(false); }
+        if (active) { setOffline(false); void loadCatalog(); }
       } catch (e) {
         if (!active) return;
         if (e instanceof ApiError && e.status === 401) {
@@ -201,7 +203,6 @@ export function TableAccess() {
 
     const timer = setInterval(() => void check(), 15000);
     void check();
-    void loadCatalog();
     return () => {
       active = false;
       clearInterval(timer);
@@ -321,11 +322,7 @@ export function TableAccess() {
   const itensCozinhaResumo = carrinho.filter(i => i.setor === 'COZINHA').map(i => `${i.quantidade}× ${i.nome}`).join(', ');
   const itensBarResumo = carrinho.filter(i => i.setor === 'BAR').map(i => `${i.quantidade}× ${i.nome}`).join(', ');
 
-  const produtosVisiveis = produtos.filter(p => {
-    if (categoriaFiltro === 'COMIDAS') return (['PRATO', 'SOBREMESA'] as CategoriaCardapio[]).includes(p.categoria);
-    if (categoriaFiltro === 'BEBIDAS') return p.categoria === 'BEBIDA';
-    return true;
-  });
+  const produtosVisiveis = produtos.filter(p => !categoriaFiltro || p.categoria === categoriaFiltro);
 
   return (
     <AppShell title="Mesa">
@@ -395,9 +392,8 @@ export function TableAccess() {
 
               {/* Abas de Categorias */}
               <div className="category-tabs" role="tablist" aria-label="Categorias do cardápio">
-                <button type="button" className={'category-tab' + (categoriaFiltro === 'TODOS' ? ' active' : '')} onClick={() => setCategoriaFiltro('TODOS')}>Todos</button>
-                <button type="button" className={'category-tab' + (categoriaFiltro === 'COMIDAS' ? ' active' : '')} onClick={() => setCategoriaFiltro('COMIDAS')}>Comidas</button>
-                <button type="button" className={'category-tab' + (categoriaFiltro === 'BEBIDAS' ? ' active' : '')} onClick={() => setCategoriaFiltro('BEBIDAS')}>Bebidas</button>
+                <button type="button" className={'category-tab' + (!categoriaFiltro ? ' active' : '')} onClick={() => setCategoriaFiltro('')}>Todos</button>
+                {categorias.map(c => <button type="button" key={c.idCategoria} className={'category-tab' + (categoriaFiltro === c.idCategoria ? ' active' : '')} onClick={() => setCategoriaFiltro(c.idCategoria)}>{rotuloCategoria(c.nome)}</button>)}
               </div>
 
               {/* Grid de Produtos */}
@@ -463,7 +459,7 @@ export function TableAccess() {
                     ← Voltar ao cardápio
                   </button>
                   <span className="detail-tag">
-                    {rotuloCategoria(produtoDetalhe.categoria)} · {rotuloSetor(produtoDetalhe.setor)}
+                    {rotuloCategoria(produtoDetalhe.nomeCategoria ?? produtoDetalhe.categoria)} · {rotuloSetor(produtoDetalhe.setor)}
                   </span>
                   <h2 className="detail-title">{produtoDetalhe.nome}</h2>
                   {produtoDetalhe.descricao && (

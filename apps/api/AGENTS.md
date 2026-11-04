@@ -1,5 +1,7 @@
 # API — preparação Sprint 3 (Grupo 9)
 
+US-15/17/19 agora implementadas em `modules/garcom`, `modules/administracao` e serviços compartilhados. `createApp` monta essas rotas após `sprintRoutes`, herdando `Cache-Control: no-store`. Categorias têm FK textual estável; a migration `20261103000000_categorias` preserva valores existentes. Testes em `tests/sprint3*.test.ts`. A descrição de preparação abaixo só vale para histórias ainda não implementadas.
+
 Leia o `AGENTS.md` da raiz, `docs/arquitetura.md`, `docs/banco.md`, `docs/contratos-api.md`, `docs/sprint-02.md`, `docs/us-12-us-13.md` e `docs/sprint-03.md` antes de qualquer implementação. As rotas Sprint 3 em `docs/sprint-03.md` são candidatas documentadas, ainda não estão implementadas. Só implementar após solicitação explícita.
 
 ## Regras confirmadas

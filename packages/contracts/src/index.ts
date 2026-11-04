@@ -48,13 +48,19 @@ export interface AlterarStatusItemInput { statusAtual: StatusFila; status: Statu
 export interface StatusItemDto { idItem: number; status: StatusPreparo; statusPedido: StatusPreparo }
 export interface FilaEventoDto { itens: ItemFilaDto[] }
 
-export type CategoriaCardapio = 'PRATO' | 'SOBREMESA' | 'BEBIDA';
+export type CategoriaCardapio = string;
+export interface CategoriaDto { idCategoria: string; nome: string; ativo: boolean }
+export interface AlterarCategoriaInput { nome?: string; ativo?: boolean }
+export interface ComandaGarcomResumoDto { idComanda: number; status: StatusComanda; dataAbertura: string }
+export interface MesaGarcomDto { idMesa: number; numeroMesa: number; comandas: ComandaGarcomResumoDto[] }
+export interface ComandaGarcomDto extends ComandaGarcomResumoDto { idMesa: number; numeroMesa: number; pedidos: PedidoConfirmadoDto[]; total: number }
 export interface ProdutoResumoDto {
   idProduto: number;
   nome: string;
   descricao: string | null;
   preco: number;
   categoria: CategoriaCardapio;
+  nomeCategoria?: string;
   setor: SetorOperacional;
   disponivel: boolean;
 }

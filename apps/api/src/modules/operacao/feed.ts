@@ -1,11 +1,11 @@
-import type { ItemFilaDto, SetorOperacional } from '@restaurante/contracts';
-import type { OperacaoService } from './service';
+import type { ItemFilaDto } from '@restaurante/contracts';
+import type { OperacaoService, CanalFila } from './service';
 
 type Listener = (itens: ItemFilaDto[] | null) => void;
 export class FilaFeed {
-  private channels = new Map<SetorOperacional, { listeners: Set<Listener>; timer: ReturnType<typeof setInterval>; fingerprint?: string; reading?: Promise<void>; again: boolean }>();
+  private channels = new Map<CanalFila, { listeners: Set<Listener>; timer: ReturnType<typeof setInterval>; fingerprint?: string; reading?: Promise<void>; again: boolean }>();
   constructor(private service: OperacaoService, private intervalMs = 2000) {}
-  subscribe(setor: SetorOperacional, listener: Listener) {
+  subscribe(setor: CanalFila, listener: Listener) {
     let channel = this.channels.get(setor);
     if (!channel) {
       const timer = setInterval(() => { void this.refresh(setor); }, this.intervalMs);
@@ -24,7 +24,7 @@ export class FilaFeed {
       if (!current.listeners.size) { clearInterval(current.timer); this.channels.delete(setor); }
     };
   }
-  async refresh(setor: SetorOperacional): Promise<void> {
+  async refresh(setor: CanalFila): Promise<void> {
     const channel = this.channels.get(setor);
     if (!channel) return;
     if (channel.reading) { channel.again = true; return channel.reading; }

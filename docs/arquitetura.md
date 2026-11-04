@@ -1,5 +1,7 @@
 # Arquitetura
 
+Atualização US-15/17/19: garçom e administração estão integrados à API comum, contratos e cliente compartilhados. Categorias são relacionais, com IDs textuais estáveis e nomes editáveis. A entrega reutiliza `PrismaOperacaoService`/`FilaFeed`; consultas e categorias ficam em `modules/garcom` e `modules/administracao`. Referências a prévias nestes módulos abaixo são históricas. Demais histórias Sprint 3 não foram implementadas.
+
 ## Decisão
 
 Um repositório Git, npm workspaces, TypeScript, um backend Node/Express e um banco MySQL/Prisma. Apps React/Vite separados por público. Electron é apenas o shell desktop. Nenhum app acessa diretamente o banco nem importa o cliente Prisma.

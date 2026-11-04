@@ -9,10 +9,14 @@ import { getPrisma } from './database/prisma';
 import { PrismaOperacaoService, type OperacaoService } from './modules/operacao/service';
 import { FilaFeed } from './modules/operacao/feed';
 import { operacaoRoutes } from './modules/operacao/routes';
+import { PrismaGarcomService, type GarcomService } from './modules/garcom/service';
+import { garcomRoutes } from './modules/garcom/routes';
+import { PrismaCategoriasService, type CategoriasService } from './modules/administracao/service';
+import { administracaoRoutes } from './modules/administracao/routes';
 
-export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig; operacao?: OperacaoService; filaIntervalMs?: number } = {}) {
+export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig; operacao?: OperacaoService; filaIntervalMs?: number; garcom?: GarcomService; categorias?: CategoriasService } = {}) {
   const app = express();
-  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176').split(',').map(s => s.trim());
+  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178').split(',').map(s => s.trim());
   app.disable('x-powered-by');
   app.use(cors({ origin(origin, callback) {
     // Apps desktop empacotados (file://) não enviam cookies ou credenciais.
@@ -32,6 +36,8 @@ export function createApp(checkDatabase: () => Promise<void>, options: { service
   app.use('/api', sprintRoutes(options.service ?? new PrismaSprintService(getPrisma, access.sessionSeconds), access, feed));
   app.use('/api/cozinha', operacaoRoutes('COZINHA', operacao, feed));
   app.use('/api/bar', operacaoRoutes('BAR', operacao, feed));
+  app.use('/api/garcom', garcomRoutes(options.garcom ?? new PrismaGarcomService(getPrisma), operacao, feed));
+  app.use('/api/administracao', administracaoRoutes(options.categorias ?? new PrismaCategoriasService(getPrisma)));
   app.use((_request, response) => {
     response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada.' } });
   });

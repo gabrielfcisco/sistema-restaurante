@@ -69,7 +69,7 @@ export function PainelOperacional({ setor, cliente }: { setor: SetorOperacional;
               <p className="operation-meta">Pedido #{item.idPedido} · <time dateTime={item.dataHora} title={new Date(item.dataHora).toLocaleString('pt-BR')}>{time}</time> · espera {minutes} min</p>
               {item.observacao && <p className="operation-observation"><strong>Observação:</strong> {item.observacao}</p>}
               <div className="operation-tags"><span className={'item-status ' + column.status.toLowerCase()}>{column.title}</span>{minutes >= 20 && <span className="item-overdue">Acima de 20 min</span>}</div>
-              <Button className="operation-action" disabled={busy.has(item.idItem) || connection !== 'conectado'} onClick={() => void avancar(item, column.next)}>{busy.has(item.idItem) ? 'Atualizando…' : column.action}</Button>
+              {column.status === 'PRONTO' ? <p className="operation-meta">Aguardando retirada pelo garçom.</p> : <Button className="operation-action" disabled={busy.has(item.idItem) || connection !== 'conectado'} onClick={() => void avancar(item, column.next)}>{busy.has(item.idItem) ? 'Atualizando…' : column.action}</Button>}
             </article>;
           })}
         </section>;

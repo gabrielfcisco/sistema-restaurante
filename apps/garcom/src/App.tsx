@@ -1,81 +1,96 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createApiClient } from '@restaurante/api-client';
+import { criarClienteOperacional } from '@restaurante/api-client/operacao';
+import type { ComandaGarcomDto, ItemFilaDto, MesaGarcomDto } from '@restaurante/contracts';
 
-type Chamada = { mesa: number; horario: string; minutos: number };
-type ItemPronto = { id: number; mesa: number; comanda: string; pedido: string; nome: string; quantidade: number; setor: 'Cozinha' | 'Bar'; minutos: number };
-
-const chamadasDeExemplo: Chamada[] = [
-  { mesa: 3, horario: '18:34', minutos: 18 },
-  { mesa: 8, horario: '18:42', minutos: 10 }
-];
-const itensDeExemplo: ItemPronto[] = [
-  { id: 5801, mesa: 8, comanda: '001', pedido: '5801', nome: 'Filé ao molho', quantidade: 2, setor: 'Cozinha', minutos: 8 },
-  { id: 5802, mesa: 8, comanda: '001', pedido: '5801', nome: 'Suco de laranja', quantidade: 2, setor: 'Bar', minutos: 4 }
-];
-
-function IconeMarca() { return <span className="brand-mark" aria-hidden="true">M</span>; }
-function IconeRelogio() { return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><path d="M10 5.8v4.6l3 1.8"/></svg>; }
-function IconeSeta() { return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg>; }
+const base = import.meta.env.VITE_API_URL ?? (window.location.protocol === 'file:' ? 'http://127.0.0.1:3333/api' : window.location.protocol + '//' + window.location.hostname + ':3333/api');
+const api = createApiClient(base);
+const fila = criarClienteOperacional(base, 'GARCOM');
+const moeda = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const status = { RECEBIDO: 'Recebido', EM_PREPARO: 'Em preparo', PRONTO: 'Pronto', ENTREGUE: 'Entregue' };
 
 export function App() {
-  const preview = new URLSearchParams(window.location.search).get('preview') === '1';
-  const chamadas = preview ? chamadasDeExemplo : [];
-  const itens = preview ? itensDeExemplo : [];
-  const [notice, setNotice] = useState('');
-  const cozinha = itens.filter(item => item.setor === 'Cozinha');
-  const bar = itens.filter(item => item.setor === 'Bar');
+  const [itens, setItens] = useState<ItemFilaDto[]>([]);
+  const [conexao, setConexao] = useState('conectando');
+  const [erroFila, setErroFila] = useState('');
+  const [aviso, setAviso] = useState('');
+  const [selecionado, setSelecionado] = useState<ItemFilaDto | null>(null);
+  const [entregando, setEntregando] = useState(false);
+  const [numero, setNumero] = useState('');
+  const [mesa, setMesa] = useState<MesaGarcomDto | null>(null);
+  const [comanda, setComanda] = useState<ComandaGarcomDto | null>(null);
+  const [consultando, setConsultando] = useState(false);
+  const [erroConsulta, setErroConsulta] = useState('');
+  const [reconectar, setReconectar] = useState(0);
+  const versao = useRef(0), entregaLock = useRef(false), mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    const stop = fila.acompanhar({ itens: setItens, conexao: (value, message) => { setConexao(value); setErroFila(message ?? ''); } });
+    return () => { mounted.current = false; versao.current++; stop(); };
+  }, [reconectar]);
 
-  function informarAcaoVisual() {
-    setNotice('A API da Sprint 3 ainda não está conectada. Nenhuma alteração foi enviada.');
+  async function buscar() {
+    const atual = ++versao.current;
+    setConsultando(true); setErroConsulta(''); setMesa(null); setComanda(null);
+    try { const data = await api.buscarMesaGarcom(Number(numero)); if (atual === versao.current) setMesa(data); }
+    catch (e) { if (atual === versao.current) setErroConsulta(e instanceof Error ? e.message : 'Não foi possível consultar a mesa.'); }
+    finally { if (atual === versao.current) setConsultando(false); }
   }
-
+  async function consultar(id: number) {
+    const atual = ++versao.current;
+    setConsultando(true); setErroConsulta(''); setComanda(null);
+    try { const data = await api.comandaGarcom(id); if (atual === versao.current) setComanda(data); }
+    catch (e) { if (atual === versao.current) setErroConsulta(e instanceof Error ? e.message : 'Não foi possível consultar a comanda.'); }
+    finally { if (atual === versao.current) setConsultando(false); }
+  }
+  async function entregar() {
+    if (!selecionado || entregaLock.current || conexao !== 'conectado') return;
+    entregaLock.current = true; setEntregando(true); setAviso('');
+    try {
+      await api.entregarItem(selecionado.idItem);
+      if (!mounted.current) return;
+      setItens(atual => atual.filter(i => i.idItem !== selecionado.idItem));
+      setSelecionado(null); setAviso('Entrega confirmada.');
+      if (comanda?.idComanda === selecionado.idComanda) void consultar(comanda.idComanda);
+    } catch (e) {
+      if (!mounted.current) return;
+      setAviso(e instanceof Error ? e.message : 'Não foi possível confirmar a entrega.');
+      setSelecionado(null); setReconectar(n => n + 1);
+    } finally { entregaLock.current = false; if (mounted.current) setEntregando(false); }
+  }
   return <div className="waiter-app">
-    <header className="waiter-header">
-      <div className="waiter-brand"><IconeMarca /><h1>Garçom</h1></div>
-      <span className="mobile-label">Atendimento</span>
-    </header>
+    <header className="waiter-header"><div className="waiter-brand"><span className="brand-mark">M</span><h1>Garçom</h1></div><span className="mobile-label">Atendimento</span></header>
     <main className="waiter-main">
-      <p className="preview-note" role="note">
-        {preview ? 'Prévia visual · dados ilustrativos, não persistidos' : 'Interface pronta · integração da Sprint 3 pendente'}
-      </p>
-
-      <div className="waiter-counts" aria-label="Resumo de pendências">
-        <div className="count-card call-count"><span>Chamados</span><strong>{chamadas.length}</strong></div>
-        <div className="count-card ready-count"><span>Pedidos prontos</span><strong>{itens.length}</strong></div>
-      </div>
-
-      {notice && <p className="action-notice" role="status">{notice}</p>}
-
-      <section className="waiter-section" aria-labelledby="calls-heading">
-        <div className="section-heading"><div><p className="section-kicker">Solicitações</p><h2 id="calls-heading">Chamados</h2></div><span className="section-count">{chamadas.length}</span></div>
-        {chamadas.length === 0 ? <div className="empty-card"><h3>Nenhuma mesa chamando no momento.</h3><p>Novos chamados aparecerão aqui automaticamente.</p></div> :
-          <div className="card-list">{chamadas.map(chamada => <article className="waiter-card call-card" key={chamada.mesa}>
-            <div className="card-topline"><span className="table-number">Mesa {String(chamada.mesa).padStart(2, '0')}</span><IconeSeta /></div>
-            <span className="wait-time"><IconeRelogio /> há {chamada.minutos} min</span>
-            <h3>Solicitou atendimento</h3>
-            <p className="card-time">{chamada.horario} · aguardando {chamada.minutos} min</p>
-            <button className="primary-button" onClick={informarAcaoVisual}>Concluir atendimento</button>
-          </article>)}</div>}
+      <p role="status">{conexao === 'conectado' ? 'Retirada atualizada' : conexao === 'conectando' ? 'Carregando retirada…' : 'Reconectando…'}</p>
+      {erroFila && <p role="alert" className="action-notice">{erroFila}</p>}
+      {aviso && <p role="status" className="action-notice">{aviso}</p>}
+      <section className="waiter-section" aria-labelledby="consulta-title">
+        <h2 id="consulta-title">Consultar mesa</h2>
+        <form className="waiter-card" onSubmit={e => { e.preventDefault(); void buscar(); }}>
+          <label htmlFor="numero-mesa">Número da mesa</label>
+          <input id="numero-mesa" type="number" min="1" max="4294967295" step="1" required value={numero} onChange={e => { versao.current++; setConsultando(false); setNumero(e.target.value); setMesa(null); setComanda(null); setErroConsulta(''); }} />
+          <button className="primary-button" disabled={consultando}>Buscar mesa</button>
+        </form>
+        {consultando && <p role="status">Consultando…</p>}
+        {erroConsulta && <p role="alert" className="action-notice">{erroConsulta}</p>}
+        {mesa && <div className="waiter-card"><h3>Mesa {mesa.numeroMesa}</h3>
+          {!mesa.comandas.length ? <p>Nenhuma comanda ativa nesta mesa.</p> : <><label htmlFor="comanda">Selecione uma comanda ativa</label><select id="comanda" value={comanda?.idComanda ?? ''} disabled={consultando} onChange={e => { if (e.target.value) void consultar(Number(e.target.value)); }}><option value="">Selecionar comanda</option>{mesa.comandas.map(c => <option key={c.idComanda} value={c.idComanda}>Comanda #{c.idComanda}</option>)}</select></>}
+        </div>}
+        {comanda && <article className="waiter-card"><h3>Comanda #{comanda.idComanda} · Mesa {comanda.numeroMesa}</h3>
+          <button type="button" onClick={() => void consultar(comanda.idComanda)} disabled={consultando}>Atualizar consumo</button>
+          {!comanda.pedidos.length && <p>Nenhum pedido confirmado.</p>}
+          {comanda.pedidos.map(p => <section key={p.idPedido}><h4>Pedido #{p.idPedido} · {status[p.status]}</h4><ul>{p.itens.map(i => <li key={i.idItem}>{i.quantidade} × {i.nomeProduto} — {status[i.status]}<br />{moeda(i.precoUnitario)} por unidade · {moeda(i.subtotal)}</li>)}</ul></section>)}
+          <p><strong>Total parcial: {moeda(comanda.total)}</strong></p>
+        </article>}
       </section>
-
-      <section className="waiter-section ready-section" aria-labelledby="ready-heading">
-        <div className="section-heading"><div><p className="section-kicker">Retirada</p><h2 id="ready-heading">Pedidos prontos</h2></div><span className="section-count blue-count">{itens.length}</span></div>
-        <ReadyGroup title="Cozinha" items={cozinha} preview={preview} onAction={informarAcaoVisual} />
-        <ReadyGroup title="Bar" items={bar} preview={preview} onAction={informarAcaoVisual} />
+      <section className="waiter-section ready-section" aria-labelledby="retirada-title">
+        <div className="section-heading"><h2 id="retirada-title">Pedidos prontos</h2><span className="section-count blue-count">{itens.length}</span></div>
+        {selecionado ? <div className="waiter-card"><h3>Confirmar entrega</h3><p>Mesa {selecionado.numeroMesa} · Comanda #{selecionado.idComanda}</p><p>{selecionado.quantidade} × {selecionado.nomeProduto}</p><p>Confirme a entrega deste item ao cliente.</p><button className="primary-button" disabled={entregando || conexao !== 'conectado'} onClick={() => void entregar()}>{entregando ? 'Confirmando…' : 'Confirmar entrega'}</button><button disabled={entregando} onClick={() => setSelecionado(null)}>Voltar</button></div> :
+          (['COZINHA', 'BAR'] as const).map(setor => <section className="sector-group" key={setor}><div className="sector-heading"><h3>{setor === 'BAR' ? 'Bar' : 'Cozinha'}</h3></div>
+            {conexao === 'conectado' && !itens.some(i => i.setor === setor) && <p className="empty-card">Nenhum item pronto neste setor.</p>}
+            <div className="card-list">{itens.filter(i => i.setor === setor).map(i => <article key={i.idItem} className="waiter-card ready-card"><p className="order-meta">Mesa {i.numeroMesa} · Comanda #{i.idComanda} · Pedido #{i.idPedido}</p><h4>{i.quantidade} × {i.nomeProduto}</h4>{i.observacao && <p>{i.observacao}</p>}<p className="ready-time">Pedido recebido em {new Date(i.dataHora).toLocaleString('pt-BR')}</p><button className="primary-button" disabled={conexao !== 'conectado'} onClick={() => setSelecionado(i)}>Marcar como entregue</button></article>)}</div>
+          </section>)}
       </section>
     </main>
   </div>;
-}
-
-function ReadyGroup({ title, items, preview, onAction }: { title: string; items: ItemPronto[]; preview: boolean; onAction: () => void }) {
-  return <section className="sector-group" aria-label={'Itens prontos da ' + title}>
-    <div className="sector-heading"><h3>{title}</h3><span>{items.length} {items.length === 1 ? 'item' : 'itens'}</span></div>
-    {items.length === 0 ? <div className="empty-card small-empty"><h4>Nenhum item pronto {title === 'Bar' ? 'no bar' : 'na cozinha'}.</h4><p>Itens em preparo não aparecem na retirada.</p></div> :
-      <div className="card-list">{items.map(item => <article className="waiter-card ready-card" key={item.id}>
-        <p className="order-meta">Mesa {String(item.mesa).padStart(2, '0')} · Comanda {item.comanda} · Pedido {item.pedido}</p>
-        <div className="product-line"><span className="check-mark" aria-hidden="true">✓</span><h4>{item.quantidade} × {item.nome}</h4></div>
-        <p className="sector-name">{item.setor}</p>
-        <span className="ready-time">pronto há {item.minutos} min</span>
-        <button className="primary-button" onClick={onAction}>{preview ? 'Marcar como entregue' : 'Marcar como entregue'}</button>
-      </article>)}</div>}
-  </section>;
 }

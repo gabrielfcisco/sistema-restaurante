@@ -26,6 +26,8 @@ A Sprint 2 está implementada; contratos finais, migrações e verificações da
 
 ## Sprint 3 — US-14 a US-19 e US-21 (Grupo 9)
 
+**Estado atual:** US-15, US-17 e US-19 implementadas. Consulte a seção de implementação em `docs/sprint-03.md` e os contratos finais. Garçom/administração consomem API real; categorias são relacionais. As referências abaixo à preparação/prévias/rotas inexistentes descrevem o estado anterior e não se aplicam a estas três histórias. US-14/16/18/21 continuam fora desta entrega; a exclusividade da entrega pelo garçom é a dependência de US-15 aplicada aos painéis.
+
 O escopo e as decisões de negócio confirmadas da Sprint 3 estão em `docs/sprint-03.md`, incluindo contratos candidatos e impactos de banco. Os workspaces `apps/garcom` e `apps/administracao` têm prévias visuais executáveis, sem integração: não implemente endpoints ou migrations sem solicitação explícita. Histórias relativas ao status do pedido devem reutilizar o serviço/API operacional existente; não duplicar transições nos apps.
 
 O repositório está preparado para iniciar essas histórias, mas isso não significa que a Sprint 3 esteja implementada. Ao receber uma história, leia seus critérios oficiais e a documentação indicada, confira o código/schema/rotas existentes e as referências de tela; implemente somente o escopo solicitado, inclusive API, contratos e interface quando fizerem parte da história. As rotas em `docs/sprint-03.md` são propostas, não endpoints já disponíveis. Não confie apenas nesta documentação: valide cada contrato contra o estado atual do código e registre qualquer divergência ou decisão em aberto antes de assumi-la.

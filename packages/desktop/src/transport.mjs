@@ -24,7 +24,7 @@ export function allowedRequest(profile, value) {
   if (profile !== 'recepcao' && profile !== 'mesa') return false;
   const routes = profile === 'recepcao'
     ? { GET: [/^\/(health|ready|mesas)$/, /^\/mesas\/[1-9]\d*$/], POST: [/^\/clientes(\/busca)?$/, /^\/atendimentos$/, /^\/mesas\/[1-9]\d*\/(reservar|liberar)$/] }
-    : { GET: [/^\/(health|ready)$/, /^\/acessos\/(mesa|dispositivo)$/, /^\/cardapio\/categorias$/, /^\/cardapio\/produtos(\?categoria=(PRATO|SOBREMESA|BEBIDA))?$/, /^\/cardapio\/produtos\/[1-9]\d*$/], POST: [/^\/acessos\/(mesa|dispositivo)$/, /^\/atendimentos\/[1-9]\d*\/pedidos$/], DELETE: [/^\/acessos\/mesa$/] };
+    : { GET: [/^\/(health|ready)$/, /^\/acessos\/(mesa|dispositivo)$/, /^\/cardapio\/categorias(\/detalhes)?$/, /^\/cardapio\/produtos(\?categoria=[A-Za-z0-9_-]{1,32})?$/, /^\/cardapio\/produtos\/[1-9]\d*$/], POST: [/^\/acessos\/(mesa|dispositivo)$/, /^\/atendimentos\/[1-9]\d*\/pedidos$/], DELETE: [/^\/acessos\/mesa$/] };
   return routes[value.method]?.some(pattern => pattern.test(value.path)) ?? false;
 }
 export async function desktopRequest(profile, config, request) {

@@ -1,5 +1,7 @@
 # Perfil de agente — preparação/rotas da Sprint 3 (Grupo 9)
 
+Estado atualizado: US-15/17/19 implementadas; preservar seus contratos finais e testes em `docs/contratos-api.md`, `docs/sprint-03.md` e `tests/sprint3*.test.ts`. As restrições de não implementar abaixo continuam aplicáveis às demais histórias, não às três entregues. Categorias já são relacionais e retirada/consulta usam serviços reais.
+
 Antes de implementar, leia `AGENTS.md`, `README.md`, `docs/arquitetura.md`, `docs/banco.md`, `docs/contratos-api.md`, `docs/sprint-02.md`, `docs/us-12-us-13.md` e `docs/sprint-03.md`, além dos módulos afetados.
 
 ## Limite atual

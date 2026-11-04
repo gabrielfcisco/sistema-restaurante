@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto, AtendimentoMesaDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, StatusPreparo } from '@restaurante/contracts';
-import type { PrismaClient, Prisma, Comanda, Cartao, Produto } from '../generated/prisma/client';
+import type { PrismaClient, Prisma, Comanda, Cartao, Produto, Categoria } from '../generated/prisma/client';
 import { ErroApi, exigir, telefone } from './validacao';
 import { statusAgregado, statusPreparo } from './operacao/service';
 
@@ -12,13 +12,14 @@ function atendimento(c: Comanda & { cartao: Cartao | null }): AtendimentoDto {
   return { idComanda: c.idComanda, idCliente: c.idCliente, idMesa: c.idMesa, idCartao: c.idCartao,
     codigoCartao: c.cartao?.codigo ?? null, status: c.status, dataAbertura: c.dataAbertura.toISOString() };
 }
-function produtoResumo(p: Produto): ProdutoResumoDto {
+function produtoResumo(p: Produto & { grupo: Categoria }): ProdutoResumoDto {
   return {
     idProduto: p.idProduto, nome: p.nome, descricao: p.descricao, preco: Number(p.preco),
-    categoria: p.categoria, setor: p.setor, disponivel: p.ativo
+    categoria: p.categoria, nomeCategoria: p.grupo.nome, setor: p.setor, disponivel: p.ativo && p.grupo.ativo
   };
 }
 export interface SprintService {
+  categoriasDetalhadas(token: string): Promise<import('@restaurante/contracts').CategoriaDto[]>;
   mesaDispositivo(token: string, idMesaInicial: number): Promise<{ idMesa: number; numero: number }>;
   configurarDispositivo(token: string, numero: number): Promise<{ idMesa: number; numero: number }>;
   buscarCliente(cpf: string): Promise<ClienteDto>;
@@ -190,21 +191,25 @@ export class PrismaSprintService implements SprintService {
   }
   async categoriasCardapio(token: string): Promise<CategoriaCardapio[]> {
     await this.sessao(token);
-    const rows = await this.db().produto.findMany({ where: { ativo: true }, select: { categoria: true }, distinct: ['categoria'] });
-    const ordem: CategoriaCardapio[] = ['PRATO', 'SOBREMESA', 'BEBIDA'];
-    return ordem.filter(c => rows.some(r => r.categoria === c));
+    const rows = await this.db().categoria.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
+    return rows.map(c => c.idCategoria);
+  }
+  async categoriasDetalhadas(token: string) {
+    await this.sessao(token);
+    return this.db().categoria.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
   }
   async produtosCardapio(token: string, categoria?: CategoriaCardapio): Promise<ProdutoResumoDto[]> {
     await this.sessao(token);
     const produtos = await this.db().produto.findMany({
-      where: { ativo: true, ...(categoria ? { categoria } : {}) },
+      where: { ativo: true, grupo: { ativo: true }, ...(categoria ? { categoria } : {}) },
+      include: { grupo: true },
       orderBy: [{ categoria: 'asc' }, { nome: 'asc' }, { idProduto: 'asc' }]
     });
     return produtos.map(produtoResumo);
   }
   async detalheProduto(token: string, idProduto: number): Promise<ProdutoResumoDto> {
     await this.sessao(token);
-    const produto = await this.db().produto.findUnique({ where: { idProduto } });
+    const produto = await this.db().produto.findUnique({ where: { idProduto }, include: { grupo: true } });
     exigir(produto, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
     return produtoResumo(produto);
   }
@@ -250,12 +255,17 @@ export class PrismaSprintService implements SprintService {
       }
 
       const idsUnicos = [...new Set(normalizedItens.map(i => i.idProduto))];
-      const produtos = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } } });
+      const referencias = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } }, select: { categoria: true } });
+      // Serializa confirmação e inativação, sempre na mesma ordem de categorias.
+      for (const categoria of [...new Set(referencias.map(p => p.categoria))].sort()) {
+        await tx.$queryRaw`SELECT id_categoria FROM categoria WHERE id_categoria = ${categoria} FOR UPDATE`;
+      }
+      const produtos = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } }, include: { grupo: true } });
       const mapaProdutos = new Map(produtos.map(p => [p.idProduto, p]));
       for (const item of normalizedItens) {
         const p = mapaProdutos.get(item.idProduto);
         exigir(p, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
-        exigir(p.ativo, 409, 'PRODUTO_INDISPONIVEL', `O item "${p.nome}" está indisponível no momento.`);
+        exigir(p.ativo && p.grupo.ativo, 409, 'PRODUTO_INDISPONIVEL', `O item "${p.nome}" está indisponível no momento.`);
       }
 
       const dataHora = new Date();

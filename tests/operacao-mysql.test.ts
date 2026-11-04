@@ -63,10 +63,11 @@ test('MySQL US-12/13: isolamento, chegada, transições concorrentes, agregado e
     ]);
     assert.equal((await db.pedido.findUniqueOrThrow({ where: { idPedido: newOrder.idPedido } })).status, 'PRONTO');
     assert.ok((await service.listar('COZINHA')).some(i => i.idItem === foodNew.idItem && i.status === 'PRONTO'));
-    await service.avancar('COZINHA', foodNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' });
+    await assert.rejects(service.avancar('COZINHA', foodNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' }), { code: 'TRANSICAO_INVALIDA' });
+    await service.avancar('GARCOM', foodNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' });
     assert.equal((await service.listar('COZINHA')).some(i => i.idItem === foodNew.idItem), false);
     assert.equal((await db.pedido.findUniqueOrThrow({ where: { idPedido: newOrder.idPedido } })).status, 'PRONTO');
-    await service.avancar('BAR', drinkNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' });
+    await service.avancar('GARCOM', drinkNew.idItem, { statusAtual: 'PRONTO', status: 'ENTREGUE' });
     assert.equal((await db.pedido.findUniqueOrThrow({ where: { idPedido: newOrder.idPedido } })).status, 'ENTREGUE');
     await assert.rejects(service.avancar('BAR', drinkNew.idItem, { statusAtual: 'RECEBIDO', status: 'EM_PREPARO' }), { code: 'ITEM_ALTERADO' });
     assert.equal((await service.listar('BAR')).length, 0);

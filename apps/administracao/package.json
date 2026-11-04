@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "@restaurante/api-client": "0.1.0",
+    "@restaurante/contracts": "0.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
@@ -29,7 +31,13 @@
     "appId": "br.grupo9.restaurante.administracao",
     "productName": "Restaurante Administração",
     "asar": true,
-    "directories": { "output": "release" },
-    "files": ["dist/**/*", "electron/**/*", "package.json"]
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ]
   }
 }

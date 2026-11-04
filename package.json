@@ -29,6 +29,7 @@
     "test": "tsx --test tests/*.test.ts",
     "test:desktop": "electron scripts/smoke-desktop.mjs",
     "test:operacao:desktop": "node scripts/test-operacao-desktop.mjs",
+    "test:sprint3:desktop": "node scripts/test-operacao-desktop.mjs --sprint3",
     "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run db:validate",
     "db:generate": "npm run db:generate -w @restaurante/api",
     "db:validate": "npm run db:validate -w @restaurante/api",

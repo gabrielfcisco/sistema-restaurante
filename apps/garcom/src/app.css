@@ -53,3 +53,8 @@ button { font: inherit; }
 @media (min-width: 700px) { body { padding: 18px; } .waiter-app { border-radius: 22px; overflow: hidden; box-shadow: 0 12px 40px #34241514; } .waiter-main { padding: 20px 24px 40px; } }
 @media (max-width: 360px) { .waiter-main { padding-inline: 14px; } .count-card { padding-inline: 10px; } .count-card span { font-size: 12px; } .waiter-card { padding: 15px; } }
 @media (prefers-reduced-motion: no-preference) { .waiter-card,.empty-card { animation: appear .22s ease-out both; } @keyframes appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } } }
+.waiter-card input, .waiter-card select { width: 100%; min-height: 44px; padding: 10px; margin: 10px 0; border: 1px solid #ded8ce; border-radius: 10px; font: inherit; }
+.waiter-card button { min-height: 44px; cursor: pointer; }
+.waiter-card button:disabled { opacity: .55; cursor: wait; }
+.waiter-card ul { padding-left: 20px; }
+.waiter-card li { margin: 12px 0; overflow-wrap: anywhere; }

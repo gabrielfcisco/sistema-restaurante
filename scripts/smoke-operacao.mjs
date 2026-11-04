@@ -42,9 +42,11 @@ app.whenReady().then(async () => {
         }
         for (const status of ['em_preparo', 'pronto']) {
           await clickCard(window, id);
-          await waitFor(window, `!!document.querySelector('.operation-column.${status} [data-item-id="${id}"]') && !document.querySelector('[data-item-id="${id}"] button').disabled`);
+          await waitFor(window, `!!document.querySelector('.operation-column.${status} [data-item-id="${id}"]') && !document.querySelector('[data-item-id="${id}"] button:disabled')`);
         }
-        await clickCard(window, id);
+        assert.equal(await evaluate(window, `document.querySelector('[data-item-id="${id}"] button') === null`), true);
+        const entrega = await fetch(process.env.OPERACAO_TEST_API + '/garcom/itens/' + id + '/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusAtual: 'PRONTO', status: 'ENTREGUE' }) });
+        assert.equal(entrega.status, 200);
         await waitFor(window, `!document.querySelector('[data-item-id="${id}"]')`);
         window.webContents.session.webRequest.onBeforeRequest({ urls: [process.env.OPERACAO_TEST_API + '/*'] }, (_details, callback) => callback({ cancel: true }));
         await evaluate(window, 'document.querySelector(".operation-refresh").click()');

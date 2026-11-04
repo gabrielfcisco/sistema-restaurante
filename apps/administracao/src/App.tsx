@@ -1,11 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createApiClient } from '@restaurante/api-client';
+import type { CategoriaDto } from '@restaurante/contracts';
 
-type Category = { id: number; name: string; active: boolean };
-const initialCategories: Category[] = [
-  { id: 1, name: 'PRATO', active: true },
-  { id: 2, name: 'SOBREMESA', active: true },
-  { id: 3, name: 'BEBIDA', active: true }
-];
+const api = createApiClient(import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3333/api');
 const navigation = [
   { label: 'Visão geral', icon: '◫', enabled: false },
   { label: 'Comandas', icon: '⌘', enabled: false },
@@ -16,13 +13,38 @@ const navigation = [
 ];
 
 export function App() {
-  const [categories] = useState(initialCategories);
+  const [categories, setCategories] = useState<CategoriaDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState<{ id?: string; nome: string; ativo: boolean } | null>(null);
+  const [confirmar, setConfirmar] = useState<CategoriaDto | null>(null);
+  const lock = useRef(false), version = useRef(0);
   const [message, setMessage] = useState('');
-  const activeCount = categories.filter(category => category.active).length;
+  const activeCount = categories.filter(category => category.ativo).length;
   const inactiveCount = categories.length - activeCount;
 
   function unavailable() {
-    setMessage('A API da Sprint 3 ainda não está conectada. Nenhuma alteração foi salva.');
+    setMessage('Esta funcionalidade não faz parte da gestão de categorias.');
+  }
+  async function carregar() {
+    const current = ++version.current;
+    setLoading(true);
+    try { const data = await api.categorias(); if (current === version.current) setCategories(data); }
+    catch (e) { if (current === version.current) setMessage(e instanceof Error ? e.message : 'Não foi possível carregar categorias.'); }
+    finally { if (current === version.current) setLoading(false); }
+  }
+  useEffect(() => { void carregar(); return () => { version.current++; }; }, []);
+  async function salvar() {
+    if (lock.current || (!form && !confirmar)) return;
+    lock.current = true; setBusy(true); setMessage('');
+    try {
+      if (confirmar) await api.alterarCategoria(confirmar.idCategoria, { ativo: !confirmar.ativo });
+      else if (form?.id) await api.alterarCategoria(form.id, { nome: form.nome, ativo: form.ativo });
+      else if (form) await api.criarCategoria(form.nome);
+      setForm(null); setConfirmar(null); setMessage('Categoria salva.');
+      await carregar();
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'Não foi possível salvar.'); }
+    finally { lock.current = false; setBusy(false); }
   }
 
   return <div className="admin-app">
@@ -40,9 +62,12 @@ export function App() {
       </aside>
 
       <main className="admin-main" id="categorias">
-        <div className="page-heading"><div><p className="eyebrow">Cardápio</p><h2>Categorias</h2><p>Organize as categorias exibidas no cardápio do cliente.</p></div><button className="new-category" onClick={unavailable}><span aria-hidden="true">＋</span> Nova categoria</button></div>
-        <div className="prototype-banner"><span className="prototype-dot" />Prévia visual · dados ilustrativos, sem persistência nesta etapa</div>
+        <div className="page-heading"><div><p className="eyebrow">Cardápio</p><h2>Categorias</h2><p>Organize as categorias exibidas no cardápio do cliente.</p></div><button className="new-category" disabled={busy} onClick={() => { setConfirmar(null); setForm({ nome: '', ativo: true }); setMessage(''); }}><span aria-hidden="true">＋</span> Nova categoria</button></div>
+        <button disabled={loading || busy} onClick={() => void carregar()}>Atualizar categorias</button>
+        {loading && <p role="status">Carregando categorias…</p>}
         {message && <p className="admin-message" role="status">{message}</p>}
+        {form && <form className="category-panel category-form" onSubmit={e => { e.preventDefault(); void salvar(); }}><h3>{form.id ? 'Editar categoria' : 'Nova categoria'}</h3><label htmlFor="nome-categoria">Nome</label><input id="nome-categoria" autoFocus required maxLength={120} value={form.nome} disabled={busy} onChange={e => setForm({ ...form, nome: e.target.value })} />{form.id && <label><input type="checkbox" checked={form.ativo} disabled={busy} onChange={e => setForm({ ...form, ativo: e.target.checked })} /> Categoria ativa</label>}<p>Ao inativar, os produtos associados ficam ocultos no cardápio.</p><button className="new-category" disabled={busy}>{busy ? 'Salvando…' : 'Salvar categoria'}</button><button type="button" disabled={busy} onClick={() => setForm(null)}>Cancelar</button></form>}
+        {confirmar && <section className="category-panel category-form" aria-label="Confirmar alteração"><h3>{confirmar.ativo ? 'Inativar' : 'Ativar'} {confirmar.nome}?</h3><p>{confirmar.ativo ? 'Os produtos desta categoria ficarão ocultos. Pedidos já confirmados serão preservados.' : 'A categoria voltará a aparecer no cardápio.'}</p><button className="new-category" disabled={busy} onClick={() => void salvar()}>Confirmar</button><button disabled={busy} onClick={() => setConfirmar(null)}>Cancelar</button></section>}
 
         <section className="summary-grid" aria-label="Resumo das categorias">
           <article className="summary-card"><span>Total de categorias</span><strong>{categories.length}</strong><small>Inclui categorias ativas e inativas</small></article>
@@ -55,15 +80,15 @@ export function App() {
           <div className="category-table-wrap">
             <table className="category-table">
               <thead><tr><th scope="col">Categoria</th><th scope="col">Status</th><th scope="col">Visibilidade</th><th scope="col" className="actions-heading">Ações</th></tr></thead>
-              <tbody>{categories.map(category => <tr key={category.id}>
-                <td><div className="category-name"><span className="category-icon" aria-hidden="true">▤</span><div><strong>{category.name}</strong><small>Categoria inicial</small></div></div></td>
-                <td><span className={'status-pill ' + (category.active ? 'status-active' : 'status-inactive')}><span />{category.active ? 'Ativa' : 'Inativa'}</span></td>
-                <td className="visibility-cell">{category.active ? 'Visível no cardápio' : 'Oculta do cardápio'}</td>
-                <td><div className="row-actions"><button onClick={unavailable}>Editar</button><button onClick={unavailable}>{category.active ? 'Inativar' : 'Ativar'}</button></div></td>
+              <tbody>{categories.map(category => <tr key={category.idCategoria}>
+                <td><div className="category-name"><span className="category-icon" aria-hidden="true">▤</span><div><strong>{category.nome}</strong></div></div></td>
+                <td><span className={'status-pill ' + (category.ativo ? 'status-active' : 'status-inactive')}><span />{category.ativo ? 'Ativa' : 'Inativa'}</span></td>
+                <td className="visibility-cell">{category.ativo ? 'Visível no cardápio' : 'Oculta do cardápio'}</td>
+                <td><div className="row-actions"><button disabled={busy} onClick={() => { setConfirmar(null); setForm({ id: category.idCategoria, nome: category.nome, ativo: category.ativo }); }}>Editar</button><button disabled={busy} onClick={() => { setForm(null); setConfirmar(category); }}>{category.ativo ? 'Inativar' : 'Ativar'}</button></div></td>
               </tr>)}</tbody>
             </table>
           </div>
-          <div className="panel-footer"><span>Exibindo {categories.length} categorias</span><span>Alterações serão persistidas quando a API US-19 for integrada.</span></div>
+          <div className="panel-footer"><span>Exibindo {categories.length} categorias</span><span>Alterações confirmadas são salvas no cardápio.</span></div>
         </section>
 
         <section className="category-guidance"><div className="guidance-icon" aria-hidden="true">i</div><div><h3>Sobre as categorias</h3><p>Inativar uma categoria oculta seus produtos no cardápio. Os produtos e pedidos já registrados são preservados.</p></div></section>

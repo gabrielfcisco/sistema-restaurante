@@ -1,5 +1,6 @@
 
 import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio } from '@restaurante/contracts';
+import type { CategoriaDto, AlterarCategoriaInput, MesaGarcomDto, ComandaGarcomDto } from '@restaurante/contracts';
 export interface ApiRequest { path: string; method: string; body?: unknown; sessionToken?: string; idempotencyKey?: string }
 export interface ApiResult { status: number; data?: unknown }
 export type ApiTransport = (request: ApiRequest) => Promise<ApiResult>;
@@ -29,6 +30,15 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     return result.data as T;
   }
   return {
+    categorias: () => request<CategoriaDto[]>('/administracao/categorias'),
+    criarCategoria: (nome: string) => request<CategoriaDto>('/administracao/categorias', 'POST', { nome }),
+    alterarCategoria: (id: string, input: AlterarCategoriaInput) => request<CategoriaDto>('/administracao/categorias/' + encodeURIComponent(id), 'PATCH', input),
+    categoriasDetalhadas: (token: string) => request<CategoriaDto[]>('/cardapio/categorias/detalhes', 'GET', undefined, token),
+    itensProntos: () => request<ItemFilaDto[]>('/garcom/itens-prontos'),
+    entregarItem: (id: number) => request<StatusItemDto>('/garcom/itens/' + id + '/status', 'PATCH', { statusAtual: 'PRONTO', status: 'ENTREGUE' }),
+    buscarMesaGarcom: (numero: number) => request<MesaGarcomDto>('/garcom/mesas?numero=' + numero),
+    comandasMesaGarcom: (id: number) => request<MesaGarcomDto>('/garcom/mesas/' + id + '/comandas'),
+    comandaGarcom: (id: number) => request<ComandaGarcomDto>('/garcom/comandas/' + id),
     fila: (setor: SetorOperacional) => request<ItemFilaDto[]>('/' + setor.toLowerCase() + '/itens'),
     avancarStatus: (setor: SetorOperacional, idItem: number, input: AlterarStatusItemInput) => request<StatusItemDto>('/' + setor.toLowerCase() + '/itens/' + idItem + '/status', 'PATCH', input),
     mesaDispositivo: () => request<{ idMesa: number; numero: number }>('/acessos/dispositivo'),

@@ -1,5 +1,21 @@
 # Sprint 3 — Preparação das US-14 a US-19 e US-21 (Grupo 9)
 
+## Implementação autorizada — US-15, US-17 e US-19
+
+Critérios completos e versos técnicos consultados em `../cartoes_UNICA_PLANILHA_DUPLEX.xlsx`, aba Imprimir, linhas 164–175, 189–200, 201–212, 214–225, 226–237 e 239–250. Somente estas três histórias fazem parte desta entrega.
+
+Contratos: retirada GET/PATCH e SSE em `/garcom`; consulta de comandas por ID interno da mesa e busca por número em `GET /garcom/mesas?numero=...`; detalhe em `/garcom/comandas/:idComanda`; GET/POST/PATCH de categorias em `/administracao/categorias`. Acesso sem login, exclusivamente na rede interna conforme decisão registrada. DTOs não incluem dados pessoais.
+
+Categorias têm ID textual estável (as iniciais conservam PRATO/SOBREMESA/BEBIDA), nome único sem distinção de caixa e status ativo. A migration converte a coluna enum para chave estrangeira textual, preservando seus valores e os produtos existentes. O contrato legado de categoria permanece uma chave textual; nomes editáveis são publicados separadamente. Confirmação de pedido bloqueia a categoria durante a transação e revalida sua disponibilidade. A migration não será aplicada ao banco de operação automaticamente.
+
+Entrega reutiliza locks de mesa/pedido, comparação de status e cálculo agregado; somente PRONTO → ENTREGUE é aceito pelo garçom. Limitar cozinha/bar a PRONTO é uma dependência da responsabilidade de entrega, sem implementar as demais funcionalidades da US-14/16. Eventos reutilizam o feed operacional; não haverá chamadas US-18 nem extrato do cliente US-21.
+
+Verificações executadas em 03/11/2026: `npm run check` aprovado (26 testes sem banco, lint, tipos, builds e Prisma válido); as três suítes MySQL (Sprint 1, US-12/13 e Sprint 3) aprovadas em bancos locais efêmeros; testes Electron ocultos `test:sprint3:desktop` e `test:operacao:desktop` aprovados com API/banco reais descartáveis. Cobertura: conflitos de entrega/SSE, total Decimal, múltiplas comandas/mesa vazia, unicidade de categorias, inativação/reflexo no catálogo e bloqueio na confirmação, preservação dos produtos na migration, formulários reais, erros e layout sem overflow. As restrições do sandbox inicialmente impediram conexões locais (EACCES); as mesmas verificações foram repetidas fora dele.
+
+Pendência de implantação: revisar destino, fazer backup e aplicar `20261103000000_categorias` no banco de desenvolvimento pretendido antes de iniciar os apps atualizados. Nenhum banco de operação foi migrado. Garçom usa snapshot/reconexão SSE para retirada e atualização explícita do consumo; cardápio reconcilia categorias na revalidação existente de 15s. Não há captura versionada específica da consulta US-17 nem link Figma no repositório; a consulta segue os componentes/estilos da referência do garçom. O PDF da mesa e capturas de garçom/administração foram consultados. Não foi inventado tempo desde PRONTO: a tela mostra o horário real de chegada do pedido.
+
+As seções de preparação abaixo são históricas para US-15/17/19. Para elas prevalecem esta seção e os contratos finais; US-14/16/18/21 permanecem fora desta implementação.
+
 ## Escopo e estado
 
 Este documento consolida as histórias e tarefas técnicas da planilha `cartoes_UNICA_PLANILHA_DUPLEX.xlsx` e as decisões confirmadas pelo Grupo 9. Esta etapa prepara o repositório; não implementa as funcionalidades.

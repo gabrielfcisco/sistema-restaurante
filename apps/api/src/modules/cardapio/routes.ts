@@ -4,10 +4,12 @@ import type { SprintService } from '../sprint-service';
 import { bearer } from '../autorizacao';
 import { exigir, idRota } from '../validacao';
 
-const categoriasValidas: CategoriaCardapio[] = ['PRATO', 'SOBREMESA', 'BEBIDA'];
 
 export function cardapioRoutes(service: SprintService) {
   const router = Router();
+  router.get('/categorias/detalhes', async (req, res) => {
+    res.json(await service.categoriasDetalhadas(bearer(req)));
+  });
   router.get('/categorias', async (req, res) => {
     res.json(await service.categoriasCardapio(bearer(req)));
   });
@@ -15,8 +17,9 @@ export function cardapioRoutes(service: SprintService) {
     const token = bearer(req);
     const raw = req.query.categoria;
     if (raw !== undefined) {
-      exigir(typeof raw === 'string' && categoriasValidas.includes(raw as CategoriaCardapio),
+      exigir(typeof raw === 'string' && /^[A-Za-z0-9_-]{1,32}$/.test(raw),
         400, 'CATEGORIA_INVALIDA', 'Categoria de cardápio inválida.');
+      exigir((await service.categoriasCardapio(token)).includes(raw), 400, 'CATEGORIA_INVALIDA', 'Categoria de cardápio inválida ou inativa.');
       res.json(await service.produtosCardapio(token, raw as CategoriaCardapio));
       return;
     }

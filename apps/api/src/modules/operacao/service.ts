@@ -4,6 +4,7 @@ import { exigir } from '../validacao';
 import { erroBanco } from '../sprint-service';
 
 const ativos = ['ABERTA', 'EM_CONSUMO', 'CONTA_SOLICITADA'] as const;
+export type CanalFila = SetorOperacional | 'GARCOM';
 export function statusPreparo(status: string): StatusPreparo {
   // PENDENTE é o nome legado de RECEBIDO; o histórico não é reescrito.
   const value = status === 'PENDENTE' ? 'RECEBIDO' : status;
@@ -15,14 +16,14 @@ export function statusAgregado(statuses: string[]): StatusPreparo {
   return STATUS_PREPARO[Math.min(...statuses.map(s => STATUS_PREPARO.indexOf(statusPreparo(s))))];
 }
 export interface OperacaoService {
-  listar(setor: SetorOperacional): Promise<ItemFilaDto[]>;
-  avancar(setor: SetorOperacional, idItem: number, input: AlterarStatusItemInput): Promise<StatusItemDto>;
+  listar(setor: CanalFila): Promise<ItemFilaDto[]>;
+  avancar(setor: CanalFila, idItem: number, input: AlterarStatusItemInput): Promise<StatusItemDto>;
 }
 export class PrismaOperacaoService implements OperacaoService {
   constructor(private database: () => PrismaClient) {}
-  async listar(setor: SetorOperacional): Promise<ItemFilaDto[]> {
+  async listar(setor: CanalFila): Promise<ItemFilaDto[]> {
     const itens = await this.database().itemPedido.findMany({
-      where: { produto: { setor }, status: { in: ['PENDENTE', 'RECEBIDO', 'EM_PREPARO', 'PRONTO'] },
+      where: { ...(setor === 'GARCOM' ? {} : { produto: { setor } }), status: { in: setor === 'GARCOM' ? ['PRONTO'] : ['PENDENTE', 'RECEBIDO', 'EM_PREPARO', 'PRONTO'] },
         pedido: { comanda: { status: { in: [...ativos] }, dataFechamento: null } } },
       include: { produto: true, pedido: { include: { comanda: { include: { mesa: true } } } } },
       orderBy: [{ pedido: { dataHora: 'asc' } }, { idPedido: 'asc' }, { idItem: 'asc' }]
@@ -31,10 +32,12 @@ export class PrismaOperacaoService implements OperacaoService {
       idItem: item.idItem, idPedido: item.idPedido, idComanda: item.pedido.idComanda,
       idMesa: item.pedido.comanda.idMesa, numeroMesa: item.pedido.comanda.mesa.numero,
       nomeProduto: item.produto.nome, quantidade: item.quantidade, observacao: item.observacao,
-      setor, status: statusPreparo(item.status) as ItemFilaDto['status'], dataHora: item.pedido.dataHora.toISOString()
+      setor: item.produto.setor, status: statusPreparo(item.status) as ItemFilaDto['status'], dataHora: item.pedido.dataHora.toISOString()
     }));
   }
-  async avancar(setor: SetorOperacional, idItem: number, input: AlterarStatusItemInput): Promise<StatusItemDto> {
+  async avancar(setor: CanalFila, idItem: number, input: AlterarStatusItemInput): Promise<StatusItemDto> {
+    exigir(setor === 'GARCOM' ? input.statusAtual === 'PRONTO' && input.status === 'ENTREGUE' : input.status !== 'ENTREGUE',
+      409, 'TRANSICAO_INVALIDA', 'A entrega de itens prontos é realizada pelo garçom.');
     exigir(STATUS_PREPARO.indexOf(input.status) === STATUS_PREPARO.indexOf(input.statusAtual) + 1,
       409, 'TRANSICAO_INVALIDA', 'Avance somente uma etapa do preparo.');
     for (let attempt = 0; ; attempt++) {
@@ -48,7 +51,7 @@ export class PrismaOperacaoService implements OperacaoService {
           await tx.$queryRaw`SELECT id_mesa FROM mesa WHERE id_mesa = ${comanda.idMesa} FOR UPDATE`;
           await tx.$queryRaw`SELECT id_pedido FROM pedido WHERE id_pedido = ${reference.idPedido} FOR UPDATE`;
           const item = await tx.itemPedido.findUnique({ where: { idItem }, include: { produto: true, pedido: { include: { comanda: true } } } });
-          exigir(item && item.produto.setor === setor, 404, 'ITEM_INEXISTENTE', 'Item não encontrado neste setor.');
+          exigir(item && (setor === 'GARCOM' || item.produto.setor === setor), 404, 'ITEM_INEXISTENTE', 'Item não encontrado neste setor.');
           exigir(ativos.some(s => s === item.pedido.comanda.status) && !item.pedido.comanda.dataFechamento,
             409, 'ATENDIMENTO_ENCERRADO', 'Atendimento encerrado. Atualize a fila.');
           exigir(statusPreparo(item.status) === input.statusAtual, 409, 'ITEM_ALTERADO', 'Outro operador já alterou este item. A fila será atualizada.');

@@ -1,5 +1,26 @@
 # Contratos da API — Sprint 01
 
+## Contratos finais — US-15, US-17 e US-19
+
+Base `/api`, sem login para garçom/administração, somente em rede interna. Configurar HOST/firewall e CORS; CORS sozinho não limita o acesso à rede. Estas rotas estão implementadas e substituem as propostas correspondentes da Sprint 3:
+
+| Método/rota | Entrada e retorno |
+|---|---|
+| GET `/garcom/itens-prontos` | `ItemFilaDto[]`, apenas PRONTO de ambos os setores e comandas ativas, ordenados por chegada/pedido/item. |
+| PATCH `/garcom/itens/:idItem/status` | `{statusAtual:"PRONTO",status:"ENTREGUE"}` → `StatusItemDto`. Conflito 409 se já alterado/encerrado; 404 inexistente. Item e agregado atualizam atomicamente. |
+| GET `/garcom/eventos` | SSE `fila` com `{itens:[]}`, `indisponivel` em falha, heartbeat 15s/retry 3s; reconciliação no servidor a cada 2s enquanto conectado, igual aos painéis existentes. |
+| GET `/garcom/mesas?numero=8` | Busca por número público → `MesaGarcomDto` com idMesa, numeroMesa e comandas ativas (id/status/abertura). Mesa inexistente 404; mesa sem comanda retorna lista vazia. |
+| GET `/garcom/mesas/:idMesa/comandas` | Mesmo DTO por ID interno. |
+| GET `/garcom/comandas/:idComanda` | `ComandaGarcomDto`, pedidos/itens/status, preços/subtotais e total parcial em Decimal convertido para número JSON. Inclui entregues. Encerrada 409, inexistente 404. Sem dados pessoais. |
+| GET `/administracao/categorias` | `CategoriaDto[]`: idCategoria textual estável, nome e ativo. |
+| POST `/administracao/categorias` | `{nome}` → 201 CategoriaDto ativa. |
+| PATCH `/administracao/categorias/:idCategoria` | `{nome?,ativo?}` → 200 CategoriaDto; requer pelo menos um campo. |
+| GET `/cardapio/categorias/detalhes` | Bearer de sessão; categorias ativas com ID/nome/status, inclusive sem produtos. |
+
+Nome obrigatório após trim, até 120 caracteres, único sem diferenciar caixa (`utf8mb4_unicode_ci`, também insensível a acentos conforme convenção do banco). Duplicidade retorna 409 CATEGORIA_DUPLICADA; entrada inválida 400. Não há DELETE nem gerenciamento de produtos.
+
+`GET /cardapio/categorias` preserva array de chaves textuais; produtos preservam `categoria` e acrescentam `nomeCategoria`. Categorias inativas ocultam produtos; detalhe informa indisponibilidade e confirmação rejeita com 409 PRODUTO_INDISPONIVEL, serializada com a alteração da categoria. Produtos/histórico não são removidos. Cozinha/bar mantêm PRONTO visível até entrega pelo garçom e rejeitam ENTREGUE (409); essa responsabilidade substitui a etapa final anterior da Sprint 2.
+
 As rotas de catálogo/pedidos (US-07 a US-11) e as rotas operacionais das US-12/13 estão implementadas. Para filas, SSE, transições, compatibilidade e testes, consulte [cozinha e bar](us-12-us-13.md). As propostas antigas abaixo são mantidas como referência histórica da preparação; não representam o estado atual quando divergirem dos contratos finais.
 
 Base `/api`, JSON. Rotas organizadas em `apps/api/src/modules/{clientes,mesas,comandas,acessos}/routes.ts`, registradas por `sprint-routes.ts`. Autorização compartilhada em `autorizacao.ts` e transações em `sprint-service.ts`; DTOs em `packages/contracts/src/index.ts`. Não inclui interfaces, leitura da câmera, pedidos ou pagamento.
