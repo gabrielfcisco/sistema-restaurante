@@ -15,6 +15,7 @@ export function operacaoRoutes(setor: SetorOperacional, service: OperacaoService
     res.json(result);
     void feed.refresh(setor);
     void feed.refresh('GARCOM');
+    void feed.refreshAllComandas();
   });
   router.get('/eventos', (_req, res) => {
     res.status(200).set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, createApiClient } from '@restaurante/api-client';
-import type { CategoriaCardapio, CategoriaDto, ItemCarrinhoDto, PedidoConfirmadoDto, ProdutoResumoDto, SessaoMesaDto } from '@restaurante/contracts';
+import type { CategoriaCardapio, CategoriaDto, ExtratoComandaDto, ItemCarrinhoDto, PedidoConfirmadoDto, ProdutoResumoDto, SessaoMesaDto } from '@restaurante/contracts';
 import { AppShell, Button } from '@restaurante/ui';
 import { browserCamera } from './platform/camera';
 
@@ -58,10 +58,11 @@ export function TableAccess() {
 
   // Estados do Carrinho e Pedido (US-09, US-10, US-11)
   const [carrinho, setCarrinho] = useState<ItemCarrinhoDto[]>([]);
-  const [telaMesa, setTelaMesa] = useState<'cardapio' | 'detalhe' | 'carrinho' | 'confirmar' | 'enviado' | 'chamado' | 'pedir-conta' | 'conta-solicitada'>('cardapio');
+  const [telaMesa, setTelaMesa] = useState<'cardapio' | 'detalhe' | 'carrinho' | 'confirmar' | 'enviado' | 'chamado' | 'extrato' | 'pedir-conta' | 'conta-solicitada'>('cardapio');
   const [avisoToast, setAvisoToast] = useState<{ texto: string; linkText?: string } | null>(null);
   const [ultimoPedido, setUltimoPedido] = useState<PedidoConfirmadoDto | null>(null);
   const [historicoPedidos, setHistoricoPedidos] = useState<PedidoConfirmadoDto[]>([]);
+  const [extrato, setExtrato] = useState<ExtratoComandaDto | null>(null);
 
   const chavePedido = useRef(crypto.randomUUID());
   const video = useRef<HTMLVideoElement>(null);
@@ -80,6 +81,7 @@ export function TableAccess() {
     setAvisoToast(null);
     setUltimoPedido(null);
     setHistoricoPedidos([]);
+    setExtrato(null);
     chavePedido.current = crypto.randomUUID();
   }
 
@@ -203,8 +205,18 @@ export function TableAccess() {
 
     const timer = setInterval(() => void check(), 15000);
     void check();
+    const stopAcompanhar = api.acompanharPedidosComanda(session.idComanda, session.token, {
+      pedidos: lista => {
+        if (!active) return;
+        setHistoricoPedidos(lista);
+        if (lista.length > 0) {
+          setUltimoPedido(atual => (atual ? lista.find(p => p.idPedido === atual.idPedido) ?? lista[lista.length - 1] : lista[lista.length - 1]));
+        }
+      }
+    });
     return () => {
       active = false;
+      stopAcompanhar();
       clearInterval(timer);
       clearTimeout(expire);
     };
@@ -301,7 +313,7 @@ export function TableAccess() {
         itens: carrinho.map(i => ({ idProduto: i.idProduto, quantidade: i.quantidade, observacao: i.observacao ?? null }))
       }, session.token, chavePedido.current);
       setUltimoPedido(pedido);
-      setHistoricoPedidos(atual => [pedido, ...atual.filter(p => p.idPedido !== pedido.idPedido)]);
+      setHistoricoPedidos(atual => [...atual.filter(p => p.idPedido !== pedido.idPedido), pedido]);
       setCarrinho([]);
       setAvisoToast(null);
       chavePedido.current = crypto.randomUUID();
@@ -315,6 +327,22 @@ export function TableAccess() {
       locked.current = false;
       setBusy(false);
     }
+  }
+
+  async function chamarGarcom() {
+    if (!session || locked.current) return;
+    locked.current = true; setBusy(true); setError('');
+    try { await api.chamarGarcom(session.idComanda, session.token); setTelaMesa('chamado'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível chamar o garçom. Tente novamente.'); }
+    finally { locked.current = false; setBusy(false); }
+  }
+
+  async function abrirExtrato() {
+    if (!session || locked.current) return;
+    locked.current = true; setBusy(true); setError('');
+    try { setExtrato(await api.extratoComanda(session.idComanda, session.token)); setTelaMesa('extrato'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível carregar o extrato.'); }
+    finally { locked.current = false; setBusy(false); }
   }
 
   const totalItensCarrinho = carrinho.reduce((soma, item) => soma + item.quantidade, 0);
@@ -351,8 +379,9 @@ export function TableAccess() {
               <p className="session-number">Mesa {String(session.numeroMesa).padStart(2, '0')} · Comanda #{session.idComanda} · Cartão {session.codigoCartao}</p>
             </div>
             <div className="mesa-topbar-actions">
+              <Button type="button" className="secondary" onClick={() => void abrirExtrato()} disabled={busy || offline}>Ver extrato</Button>
               <Button type="button" className="secondary" onClick={() => setTelaMesa('pedir-conta')} disabled={busy || offline}>Pedir conta</Button>
-              <Button type="button" className="secondary" onClick={() => setTelaMesa('chamado')} disabled={busy || offline}>Chamar garçom</Button>
+              <Button type="button" className="secondary" onClick={() => void chamarGarcom()} disabled={busy || offline}>Chamar garçom</Button>
               <Button type="button" onClick={abrirRevisaoPedido} disabled={busy || offline}>
                 🛒 Carrinho <span className="cart-badge" data-testid="cart-count">{totalItensCarrinho}</span>
               </Button>
@@ -383,9 +412,9 @@ export function TableAccess() {
                   <h2>O que você deseja?</h2>
                   <p className="muted">Mesa {String(session.numeroMesa).padStart(2, '0')} · Cartão {session.codigoCartao}</p>
                 </div>
-                {ultimoPedido && (
+                { (historicoPedidos.length > 0 || ultimoPedido) && (
                   <Button type="button" className="secondary" onClick={() => setTelaMesa('enviado')}>
-                    Ver último pedido (#{ultimoPedido.idPedido})
+                    Acompanhar pedido (#{(ultimoPedido ?? historicoPedidos[historicoPedidos.length - 1])!.idPedido})
                   </Button>
                 )}
               </div>
@@ -585,33 +614,53 @@ export function TableAccess() {
             </div>
           )}
 
-          {/* 5. PEDIDO ENVIADO E HISTÓRICO (Tela 11) */}
-          {!offline && telaMesa === 'enviado' && ultimoPedido && (
-            <div className="menu-gateway" data-testid="pedido-enviado">
-              <span className="confirm-badge success">Pedido enviado</span>
-              <h2>Pedido {ultimoPedido.idPedido}</h2>
-              <p className="muted">Mesa {String(ultimoPedido.numeroMesa).padStart(2, '0')} · Cartão {session.codigoCartao} · carrinho vazio</p>
-              <div className="cart-layout">
-                <div className="cart-list">
-                  {ultimoPedido.itens.map(item => (
-                    <article key={item.idItem} className="cart-item-card">
-                      <h3>{item.quantidade}× {item.nomeProduto}</h3>
-                      <p className="cart-item-meta">{rotuloSetor(item.setor)} · {formatarMoeda(item.subtotal)}</p>
-                      <span className="order-item-badge">{rotuloStatus(item.status)}</span>
-                    </article>
-                  ))}
+          {/* 5. PEDIDO ENVIADO E HISTÓRICO / ACOMPANHAMENTO (US-16, Tela 11) */}
+          {!offline && telaMesa === 'enviado' && (ultimoPedido || historicoPedidos.length > 0) && (() => {
+            const pedidosExibidos = historicoPedidos.length > 0 ? historicoPedidos : (ultimoPedido ? [ultimoPedido] : []);
+            const pedidoPrincipal = pedidosExibidos[pedidosExibidos.length - 1]!;
+            const todosItens = pedidosExibidos.flatMap(p => p.itens.map(item => ({ ...item, idPedido: p.idPedido, dataHora: p.dataHora })));
+            return (
+              <div className="menu-gateway" data-testid="pedido-enviado">
+                <span className="confirm-badge success">Pedido enviado</span>
+                <h2>Pedido {pedidoPrincipal.idPedido}</h2>
+                <p className="muted">Mesa {String(pedidoPrincipal.numeroMesa).padStart(2, '0')} · Cartão {session.codigoCartao} · {carrinho.length === 0 ? 'carrinho vazio' : `${totalItensCarrinho} no carrinho`}</p>
+                <div className="cart-layout">
+                  <div className="cart-list">
+                    {todosItens.map(item => (
+                      <article key={item.idItem} className="cart-item-card" data-item-id={item.idItem}>
+                        <h3>{item.quantidade}× {item.nomeProduto}</h3>
+                        <p className="cart-item-meta">
+                          {rotuloSetor(item.setor)} · {formatarMoeda(item.subtotal)}
+                          {pedidosExibidos.length > 1 ? ` · Pedido #${item.idPedido}` : ''}
+                        </p>
+                        <span className={'order-item-badge ' + item.status.toLowerCase()} data-testid={'status-item-' + item.idItem}>{rotuloStatus(item.status)}</span>
+                      </article>
+                    ))}
+                  </div>
+                  <aside className="cart-summary-card">
+                    <h3>Histórico do pedido</h3>
+                    {pedidosExibidos.map(p => (
+                      <div key={p.idPedido} style={{ marginBottom: 8 }}>
+                        <p className="muted" style={{ margin: '2px 0' }}>
+                          {new Date(p.dataHora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Pedido #{p.idPedido} ({rotuloStatus(p.status).toLowerCase()})
+                        </p>
+                        {p.itens.map(item => (
+                          <p key={item.idItem} className="muted" style={{ margin: '2px 0', fontSize: '0.8rem' }}>
+                            • {item.nomeProduto}: {rotuloStatus(item.status).toLowerCase()}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                    <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
+                    <Button type="button" onClick={() => void api.pedidosComanda(session.idComanda, session.token).then(lista => {
+                      setHistoricoPedidos(lista);
+                      if (lista.length > 0) setUltimoPedido(lista[lista.length - 1]);
+                    }).catch(() => {})}>Acompanhar pedido</Button>
+                  </aside>
                 </div>
-                <aside className="cart-summary-card">
-                  <h3>Histórico do pedido</h3>
-                  <p className="muted">
-                    {new Date(ultimoPedido.dataHora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · Pedido recebido ({formatarMoeda(ultimoPedido.total)})
-                  </p>
-                  {historicoPedidos.length > 1 && <p className="muted">{historicoPedidos.length} pedidos enviados nesta sessão.</p>}
-                  <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
-                </aside>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 6. CHAMAR GARÇOM (Tela 12) */}
           {!offline && telaMesa === 'chamado' && (
@@ -622,6 +671,21 @@ export function TableAccess() {
               <div className="table-actions">
                 <Button type="button" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
               </div>
+            </div>
+          )}
+
+          {!offline && telaMesa === 'extrato' && extrato && (
+            <div className="menu-gateway" data-testid="extrato-comanda">
+              <span className="confirm-badge">Extrato da comanda</span>
+              <h2>Comanda #{extrato.idComanda}</h2>
+              {extrato.itens.length === 0 ? <p className="muted">Ainda não há pedidos confirmados nesta comanda.</p> :
+                <div className="cart-list">{extrato.itens.map(item => <article className="cart-item-card" key={item.idItem}>
+                  <h3>{item.quantidade}× {item.nomeProduto}</h3>
+                  <p className="cart-item-meta">{formatarMoeda(item.precoUnitario)} cada · {rotuloStatus(item.status)} · Pedido #{item.idPedido}</p>
+                  <p className="cart-item-subtotal">{formatarMoeda(item.subtotal)}</p>
+                </article>)}</div>}
+              <aside className="cart-summary-card"><h3>Total</h3><p className="cart-total-value" data-testid="extrato-total">{formatarMoeda(extrato.total)}</p></aside>
+              <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
             </div>
           )}
 

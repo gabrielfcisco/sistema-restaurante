@@ -32,8 +32,9 @@ export function createApp(checkDatabase: () => Promise<void>, options: { service
   });
   const access = options.access ?? accessConfig();
   const operacao = options.operacao ?? new PrismaOperacaoService(getPrisma);
-  const feed = new FilaFeed(operacao, options.filaIntervalMs);
-  app.use('/api', sprintRoutes(options.service ?? new PrismaSprintService(getPrisma, access.sessionSeconds), access, feed));
+  const sprint = options.service ?? new PrismaSprintService(getPrisma, access.sessionSeconds);
+  const feed = new FilaFeed(operacao, options.filaIntervalMs, sprint);
+  app.use('/api', sprintRoutes(sprint, access, feed));
   app.use('/api/cozinha', operacaoRoutes('COZINHA', operacao, feed));
   app.use('/api/bar', operacaoRoutes('BAR', operacao, feed));
   app.use('/api/garcom', garcomRoutes(options.garcom ?? new PrismaGarcomService(getPrisma), operacao, feed));

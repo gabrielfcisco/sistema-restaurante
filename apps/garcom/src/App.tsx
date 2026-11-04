@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createApiClient } from '@restaurante/api-client';
 import { criarClienteOperacional } from '@restaurante/api-client/operacao';
-import type { ComandaGarcomDto, ItemFilaDto, MesaGarcomDto } from '@restaurante/contracts';
+import type { ChamadaDto, ComandaGarcomDto, ItemFilaDto, MesaGarcomDto } from '@restaurante/contracts';
 
 const base = import.meta.env.VITE_API_URL ?? (window.location.protocol === 'file:' ? 'http://127.0.0.1:3333/api' : window.location.protocol + '//' + window.location.hostname + ':3333/api');
 const api = createApiClient(base);
@@ -12,6 +12,14 @@ const status = { RECEBIDO: 'Recebido', EM_PREPARO: 'Em preparo', PRONTO: 'Pronto
 export function App() {
   const [itens, setItens] = useState<ItemFilaDto[]>([]);
   const [conexao, setConexao] = useState('conectando');
+  const [chamados, setChamados] = useState<ChamadaDto[] | null>(null);
+  const [concluindo, setConcluindo] = useState<number | null>(null);
+  async function concluir(id: number) {
+    setConcluindo(id); setAviso('');
+    try { await api.concluirChamada(id); setChamados(rows => rows?.filter(c => c.idChamada !== id) ?? null); }
+    catch (e) { setAviso(e instanceof Error ? e.message : 'Não foi possível concluir a chamada.'); }
+    finally { setConcluindo(null); }
+  }
   const [erroFila, setErroFila] = useState('');
   const [aviso, setAviso] = useState('');
   const [selecionado, setSelecionado] = useState<ItemFilaDto | null>(null);
@@ -25,7 +33,7 @@ export function App() {
   const versao = useRef(0), entregaLock = useRef(false), mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
-    const stop = fila.acompanhar({ itens: setItens, conexao: (value, message) => { setConexao(value); setErroFila(message ?? ''); } });
+    const stop = fila.acompanhar({ itens: setItens, chamados: setChamados, conexao: (value, message) => { setConexao(value); setErroFila(message ?? ''); } });
     return () => { mounted.current = false; versao.current++; stop(); };
   }, [reconectar]);
 
@@ -64,6 +72,10 @@ export function App() {
       <p role="status">{conexao === 'conectado' ? 'Retirada atualizada' : conexao === 'conectando' ? 'Carregando retirada…' : 'Reconectando…'}</p>
       {erroFila && <p role="alert" className="action-notice">{erroFila}</p>}
       {aviso && <p role="status" className="action-notice">{aviso}</p>}
+      <section className="waiter-section"><h2>Chamados</h2>
+        {chamados === null ? <p role="status">Aguardando atualização dos chamados…</p> : chamados.length === 0 ? <p className="empty-card">Nenhuma mesa chamando no momento.</p> :
+          chamados.map(c => <article className="waiter-card" key={c.idChamada}><h3>Mesa {c.numeroMesa}</h3><p>Solicitou atendimento às {new Date(c.criadaEm).toLocaleTimeString('pt-BR')}</p><button className="primary-button" disabled={concluindo !== null} onClick={() => void concluir(c.idChamada)}>Concluir atendimento</button></article>)}
+      </section>
       <section className="waiter-section" aria-labelledby="consulta-title">
         <h2 id="consulta-title">Consultar mesa</h2>
         <form className="waiter-card" onSubmit={e => { e.preventDefault(); void buscar(); }}>

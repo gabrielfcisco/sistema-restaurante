@@ -2,7 +2,7 @@ import type { AlterarStatusItemInput, FilaEventoDto, ItemFilaDto, SetorOperacion
 import { createApiClient } from './index';
 
 export type ConexaoFila = 'conectando' | 'conectado' | 'reconectando';
-export interface FilaCallbacks { itens: (itens: ItemFilaDto[]) => void; conexao: (status: ConexaoFila, message?: string) => void }
+export interface FilaCallbacks { chamados?: (chamados: import('@restaurante/contracts').ChamadaDto[] | null) => void; itens: (itens: ItemFilaDto[]) => void; conexao: (status: ConexaoFila, message?: string) => void }
 export function ordenarFila(itens: ItemFilaDto[]) {
   return [...itens].sort((a, b) => Date.parse(a.dataHora) - Date.parse(b.dataHora) || a.idPedido - b.idPedido || a.idItem - b.idItem);
 }
@@ -37,7 +37,15 @@ export function criarClienteOperacional(baseUrl: string, setor: SetorOperacional
           const base = (config?.apiUrl ?? baseUrl).replace(/\/$/, '');
           stream = new EventSource(base + '/' + setor.toLowerCase() + '/eventos');
           stream.onopen = () => { void load(); };
-          stream.onerror = () => { revision++; fail(); };
+          stream.onerror = () => { revision++; callbacks.chamados?.(null); fail(); };
+          if (callbacks.chamados) {
+            stream.addEventListener('chamados', event => {
+              if (stopped) return;
+              try { callbacks.chamados?.(JSON.parse((event as MessageEvent).data).chamados); }
+              catch { callbacks.chamados?.(null); }
+            });
+            stream.addEventListener('chamados-indisponiveis', () => callbacks.chamados?.(null));
+          }
           stream.addEventListener('fila', event => {
             try {
               const itens = validar((JSON.parse((event as MessageEvent).data) as FilaEventoDto).itens);

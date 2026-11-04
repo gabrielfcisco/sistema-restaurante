@@ -1,8 +1,8 @@
 # Sistema de restaurante — Grupo 9
 
-**Sprint 3 — US-15/17/19:** garçom já consulta itens prontos, confirma entrega e consulta comandas por mesa; administração gerencia categorias persistidas. As referências a prévias destes fluxos abaixo são históricas. Chamadas, acompanhamento do cliente e extrato US-16/18/21 não integram esta entrega.
+**Sprint 3 integrada.** Cozinha e bar avançam o preparo até PRONTO. O garçom recebe chamados e retirada, confirma a entrega e consulta o consumo por mesa/comanda. O cliente acompanha os pedidos, chama o garçom e consulta o extrato da própria comanda. A administração gerencia categorias persistidas.
 
-Antes de usar, revisar/aplicar em um banco de desenvolvimento conhecido a migration `20261103000000_categorias` e executar `npm run db:generate`. Ela preserva produtos e troca o enum por FK textual em Categoria. O servidor não aplica migrations automaticamente. Garçom usa a API na porta 3333 do mesmo host quando aberto no navegador; `VITE_API_URL` sobrescreve o endereço e também configura o build da administração. Configure CORS_ORIGINS com as origens de garçom (5177) e administração (5178). Acesso da equipe sem login requer rede interna/firewall.
+Em um novo ambiente de desenvolvimento, confira o destino e aplique as migrations de categorias e chamados antes de iniciar a API. Execute `npm run db:generate` para atualizar o cliente Prisma. Garçom usa a API na porta 3333 do mesmo host no navegador. Configure `VITE_API_URL` para outro endereço e autorize as origens internas em `CORS_ORIGINS` (garçom 5177, administração 5178).
 
 Verificações: `npm run check`; `RUN_MYSQL_TESTS=1` com `TEST_DATABASE_URL` local para integração; `npm run test:sprint3:desktop` após build, com a mesma variável, testa interfaces Electron ocultas contra banco/API descartáveis. Veja contratos finais em `docs/contratos-api.md` e resultados em `docs/sprint-03.md`.
 
@@ -87,6 +87,6 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 - [Contratos da API](docs/contratos-api.md)
 - [Modelagem e migration da sprint](docs/banco.md)
 
-`apps/api` contém o backend único. `apps/cozinha` e `apps/bar` reutilizam o painel operacional de `packages/ui`, com filas e alterações separadas por setor no servidor. `apps/garcom` é uma web app móvel e `apps/administracao` é desktop Electron; ambos exibem prévias visuais da Sprint 3 sem persistência e serão integrados após a implementação da API. `packages/api-client` e `packages/contracts` também são compartilhados. `legacy/nextjs` preserva o scaffold anterior e não é executado.
+`apps/api` contém o backend único. Os aplicativos compartilham contratos, cliente HTTP e componentes operacionais. O legado em `legacy/nextjs` não é executado.
 
 O caixa permanece futuro. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.

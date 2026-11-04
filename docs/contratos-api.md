@@ -108,6 +108,12 @@ Esta tabela registra o desenho original. US-07 a US-13 já estão implementadas;
 
 Itens são roteados pelo `Produto.setor` no servidor: COZINHA ou BAR. Não aceitar `setor` enviado no corpo. Cada confirmação cria um novo Pedido dentro da mesma comanda; itens antigos ficam no histórico/fechamento e nunca são reenviados às filas. Painéis avançam apenas itens do seu setor em sequência e publicam mudanças via SSE. O status agregado do Pedido é o estágio menos avançado de seus itens, recalculado na mesma transação da mudança do item; quando todos estão `ENTREGUE`, o Pedido também fica `ENTREGUE`. Por decisão do Grupo 9, os painéis não exigem login; implantar em rede interna, configurando `HOST` e `CORS_ORIGINS`. GET da fila é o snapshot/reconciliação. Imagem genérica de teste deve ser commitada em `assets/cardapio/` e sua chave relativa persistida em Produto por migration aditiva; upload/admin e imagens reais são futuros.
 
-## Sprint 3 — propostas de preparação (US-14 a US-19 e US-21)
+## Sprint 3 — rotas e propostas (US-14 a US-19 e US-21)
 
-Os contratos candidatos, as permissões confirmadas, fluxos de status e impactos de banco estão em [`docs/sprint-03.md`](sprint-03.md). Nenhum desses endpoints está implementado. Preserve aqui os contratos finais existentes da Sprint 1/2; ao iniciar implementação Sprint 3, promova as propostas aprovadas para esta referência e registre os resultados em `docs/sprint-03.md`.
+As rotas das **US-14**, **US-16**, **US-18** e **US-21** estão implementadas. US-18 persiste chamadas, expõe o snapshot e eventos SSE para o garçom e conclui chamadas por PATCH; o POST de chamada usa lock da mesa para retornar a pendência existente. A liberação cancela chamadas pendentes atomicamente. US-21 expõe extrato autenticado com itens de pedidos confirmados e preços do produto. Verifique os detalhes e a migration em [`docs/sprint-03.md`](sprint-03.md). Preserve os contratos finais existentes da Sprint 1/2.
+
+| US-18 | POST `/atendimentos/:idComanda/chamados` | Bearer da sessão vinculada | 201 `ChamadaDto`; chamada pendente existente da mesa é retornada sem duplicar. |
+| US-18 | GET `/garcom/chamados` | Sem login, rede interna | Snapshot das chamadas pendentes, ordenado por criação. |
+| US-18 | GET `/garcom/eventos` (SSE) | Sem login, rede interna | Eventos `chamados` com snapshot da fila; reconexão pode usar GET. |
+| US-18 | PATCH `/garcom/chamados/:idChamada/status` | Sem login, rede interna | `{status:"CONCLUIDA"}`; conflito se já concluída/cancelada. |
+| US-21 | GET `/atendimentos/:idComanda/extrato` | Bearer da sessão vinculada | Itens de pedidos confirmados, qualquer status, com quantidade, preço, subtotal e total em moeda. |

@@ -49,6 +49,7 @@ try {
   }
   if (!ready) throw new Error('API descartável não iniciou.');
   const sprint3 = process.argv.includes('--sprint3');
+  if (sprint3) await connection.query('INSERT INTO chamada(id_mesa) VALUES (1)');
   await run(process.execPath, ['node_modules/electron/cli.js', sprint3 ? 'scripts/smoke-sprint3.mjs' : 'scripts/smoke-operacao.mjs'], env);
   const statuses = await connection.query('SELECT status FROM item_pedido WHERE id_item IN (' + (sprint3 ? '5' : '1,2') + ') ORDER BY id_item');
   if (statuses.some(row => row.status !== 'ENTREGUE')) throw new Error('Interface não persistiu a entrega dos itens.');

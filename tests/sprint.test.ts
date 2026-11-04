@@ -199,6 +199,48 @@ test('US-10/11: confirmação de pedido exige sessão, chave de idempotência, i
   });
 });
 
+test('US-18/21: cria chamadas autenticadas sem duplicação, lista/conclui e consulta extrato somente da própria comanda', async () => {
+  const sessao = 'sessao-us18-us21-ficticia-000000000';
+  const extrato = { idComanda: 1, itens: [{ idItem: 1, idPedido: 10, nomeProduto: 'Prato fictício', quantidade: 2, precoUnitario: 0.1, subtotal: 0.2, status: 'EM_PREPARO' as const }], total: 0.2 };
+  let concluidos = 0;
+  await http(async url => {
+    const semSessao = await fetch(url + '/atendimentos/1/extrato');
+    assert.equal(semSessao.status, 401);
+    assert.equal((await fetch(url + '/atendimentos/2/extrato', { headers: { Authorization: `Bearer ${sessao}` } })).status, 403);
+    const chamada = await post(url + '/atendimentos/1/chamados', {}, sessao);
+    assert.equal(chamada.status, 201);
+    assert.equal((await chamada.json()).idChamada, 5);
+    assert.equal((await post(url + '/atendimentos/1/chamados', {}, sessao)).status, 201);
+    const snapshot = await fetch(url + '/garcom/chamados');
+    assert.equal(snapshot.status, 200);
+    assert.equal((await snapshot.json()).length, 1);
+    const invalid = await fetch(url + '/garcom/chamados/5/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'PENDENTE' }) });
+    assert.equal(invalid.status, 400);
+    const done = await fetch(url + '/garcom/chamados/5/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'CONCLUIDA' }) });
+    assert.equal(done.status, 200);
+    assert.equal((await done.json()).status, 'CONCLUIDA');
+    assert.equal(concluidos, 1);
+    const response = await fetch(url + '/atendimentos/1/extrato', { headers: { Authorization: `Bearer ${sessao}` } });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), extrato);
+  }, {
+    criarChamada: async (idComanda, token) => {
+      assert.equal(token, sessao); assert.equal(idComanda, 1);
+      return { idChamada: 5, idMesa: 8, numeroMesa: 8, status: 'PENDENTE', criadaEm: '2026-11-03T12:00:00.000Z' };
+    },
+    listarChamados: async () => [{ idChamada: 5, idMesa: 8, numeroMesa: 8, status: 'PENDENTE', criadaEm: '2026-11-03T12:00:00.000Z' }],
+    concluirChamada: async idChamada => {
+      assert.equal(idChamada, 5); concluidos++;
+      return { idChamada, idMesa: 8, numeroMesa: 8, status: 'CONCLUIDA', criadaEm: '2026-11-03T12:00:00.000Z' };
+    },
+    extratoComanda: async (idComanda, token) => {
+      assert.equal(token, sessao);
+      if (idComanda !== 1) throw new ErroApi(403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
+      return extrato;
+    }
+  });
+});
+
 test('US-07: cardápio por categorias exige sessão, filtra produtos ativos e valida parâmetros', async () => {
   const sessaoToken = 'sessao-mesa-valida-00000000000000';
   await http(async url => {
@@ -288,5 +330,109 @@ test('US-08: detalhes do item exibem nome, descrição, preço e status de dispo
       throw new ErroApi(404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
     }
   });
+});
+
+test('US-16: acompanhamento de pedidos da comanda exige sessão vinculada, inclui itens entregues e transmite atualizações via SSE', async () => {
+  const sessaoComanda1 = 'sessao-mesa-comanda1-0000000000000';
+  const sessaoComanda2 = 'sessao-mesa-comanda2-0000000000000';
+  let statusItem1: 'RECEBIDO' | 'EM_PREPARO' | 'PRONTO' | 'ENTREGUE' = 'RECEBIDO';
+  const montarPedidos = (idComanda: number) => [{
+    idPedido: 5801, idComanda, idMesa: 8, numeroMesa: 8,
+    status: statusItem1 === 'ENTREGUE' ? ('ENTREGUE' as const) : statusItem1,
+    dataHora: '2026-10-26T12:00:00.000Z', total: 60,
+    itens: [
+      { idItem: 1, idProduto: 10, nomeProduto: 'Filé ao molho', quantidade: 1, precoUnitario: 48, subtotal: 48, observacao: null, setor: 'COZINHA' as const, status: statusItem1 },
+      { idItem: 2, idProduto: 20, nomeProduto: 'Suco de laranja', quantidade: 1, precoUnitario: 12, subtotal: 12, observacao: null, setor: 'BAR' as const, status: 'ENTREGUE' as const }
+    ]
+  }];
+  const server = createApp(async () => {}, {
+    access,
+    filaIntervalMs: 30,
+    operacao: {
+      listar: async () => [],
+      avancar: async (_setor, idItem, input) => {
+        statusItem1 = input.status;
+        return { idItem, status: input.status, statusPedido: input.status };
+      }
+    },
+    service: {
+      mesaDispositivo: async (_token: string, idMesa: number) => ({ idMesa, numero: idMesa }),
+      listarPedidosComanda: async (idComanda, token) => {
+        if (token !== sessaoComanda1 && token !== sessaoComanda2) throw new ErroApi(401, 'SESSAO_INVALIDA', 'Sessão inválida.');
+        if ((token === sessaoComanda1 && idComanda !== 1) || (token === sessaoComanda2 && idComanda !== 2)) {
+          throw new ErroApi(403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
+        }
+        return montarPedidos(idComanda);
+      },
+      listarPedidosComandaInterno: async idComanda => montarPedidos(idComanda)
+    } as SprintService
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+  try {
+    // Sem token -> 401
+    assert.equal((await fetch(url + '/atendimentos/1/pedidos')).status, 401);
+    assert.equal((await fetch(url + '/atendimentos/1/eventos')).status, 401);
+
+    // Outra comanda -> 403
+    const forbidden = await fetch(url + '/atendimentos/2/pedidos', { headers: { Authorization: `Bearer ${sessaoComanda1}` } });
+    assert.equal(forbidden.status, 403);
+    assert.equal((await forbidden.json()).error.code, 'COMANDA_INCORRETA');
+    assert.equal((await fetch(url + '/atendimentos/2/eventos', { headers: { Authorization: `Bearer ${sessaoComanda1}` } })).status, 403);
+
+    // Snapshot GET da própria comanda inclui itens entregues
+    const snapshotRes = await fetch(url + '/atendimentos/1/pedidos', { headers: { Authorization: `Bearer ${sessaoComanda1}` } });
+    assert.equal(snapshotRes.status, 200);
+    const snapshot = await snapshotRes.json();
+    assert.equal(snapshot.length, 1);
+    assert.equal(snapshot[0].itens.length, 2);
+    assert.equal(snapshot[0].itens[0].status, 'RECEBIDO');
+    assert.equal(snapshot[0].itens[1].status, 'ENTREGUE');
+
+    // SSE autenticado escopado à comanda recebe mudanças de preparo
+    const controller = new AbortController();
+    const sseRes = await fetch(url + '/atendimentos/1/eventos', {
+      headers: { Authorization: `Bearer ${sessaoComanda1}` },
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)])
+    });
+    assert.equal(sseRes.status, 200);
+    assert.match(sseRes.headers.get('content-type') ?? '', /text\/event-stream/);
+    const reader = sseRes.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    async function nextPedidosEvent() {
+      for (;;) {
+        let boundary: number;
+        while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+          const frame = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          if (frame.includes('event: pedidos')) {
+            return JSON.parse(frame.split('\n').find(l => l.startsWith('data: '))!.slice(6)).pedidos;
+          }
+        }
+        const value = await reader.read();
+        assert.equal(value.done, false);
+        buffer += decoder.decode(value.value, { stream: true });
+      }
+    }
+    try {
+      const inicial = await nextPedidosEvent();
+      assert.equal(inicial[0].itens[0].status, 'RECEBIDO');
+      const patch = await fetch(url + '/cozinha/itens/1/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statusAtual: 'RECEBIDO', status: 'EM_PREPARO' })
+      });
+      assert.equal(patch.status, 200);
+      const atualizado = await nextPedidosEvent();
+      assert.equal(atualizado[0].itens[0].status, 'EM_PREPARO');
+      assert.equal(atualizado[0].itens[1].status, 'ENTREGUE');
+    } finally {
+      controller.abort();
+      await reader.cancel().catch(() => {});
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(e => e ? reject(e) : resolve()));
+  }
 });
 

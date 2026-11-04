@@ -28,6 +28,10 @@ app.whenReady().then(async () => {
         await window.loadFile(fileURLToPath(new URL('../apps/' + profile + '/dist/index.html', import.meta.url)));
         if (profile === 'garcom') {
           await waitFor(window, `document.querySelectorAll('.ready-card').length === 2`);
+          await waitFor(window, "document.body.innerText.includes('Concluir atendimento')");
+          await click(window, 'Concluir atendimento');
+          await waitFor(window, "document.body.innerText.includes('Nenhuma mesa chamando')");
+          assert.deepEqual(await (await fetch(base + '/garcom/chamados')).json(), []);
           await input(window, 'numero-mesa', '8'); await click(window, 'Buscar mesa');
           await waitFor(window, `document.querySelectorAll('#comanda option').length === 2`);
           await evaluate(window, `(() => {const e=document.getElementById('comanda');e.value='1';e.dispatchEvent(new Event('change',{bubbles:true}));})()`);

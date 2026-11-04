@@ -1,6 +1,6 @@
 # Arquitetura
 
-Atualização US-15/17/19: garçom e administração estão integrados à API comum, contratos e cliente compartilhados. Categorias são relacionais, com IDs textuais estáveis e nomes editáveis. A entrega reutiliza `PrismaOperacaoService`/`FilaFeed`; consultas e categorias ficam em `modules/garcom` e `modules/administracao`. Referências a prévias nestes módulos abaixo são históricas. Demais histórias Sprint 3 não foram implementadas.
+Integração da Sprint 3: garçom recebe retirada e chamados pela mesma conexão SSE, mesa usa eventos autenticados por comanda e consulta extrato, administração gerencia categorias persistidas. Cozinha/bar e garçom reutilizam o serviço transacional de status.
 
 ## Decisão
 
@@ -38,7 +38,7 @@ Os pacotes internos exportam TypeScript, compilado pelo Vite/tsup dos consumidor
 
 `apps/mesa` consome cardápio e confirma pedidos; cada confirmação cria um Pedido novo na mesma comanda, e só seus itens novos são distribuídos. `apps/cozinha` e `apps/bar` consomem filas por SSE e atualizam itens na API; regras e verificações executadas estão em `docs/us-12-us-13.md`. A preparação das US-14 a US-19 e US-21, incluindo módulos futuros e decisões pendentes, está em `docs/sprint-03.md`. A API compartilhada mantém a fonte de verdade para pedidos, comanda, itens e autorizações.
 
-`apps/garcom` é uma web app responsiva para celular, servida na rede local e preparada como PWA para hospedagem HTTPS. `apps/administracao` é uma janela Electron desktop. Ambos têm somente prévias visuais, sem consumo da API ou persistência; regras, decisões e contratos planejados estão em `docs/sprint-03.md`. Os próximos workspaces devem seguir package, porta, CORS e Electron dos apps existentes. As rotas de fila da cozinha/bar são sem login, portanto a API deve ficar na rede interna. O bridge permanece restrito e as permissões são negadas por padrão. As capturas em `screenshots/` são referências visuais.
+`apps/garcom` é uma web app responsiva para celular, servida na rede local e preparada como PWA para hospedagem HTTPS. `apps/administracao` é uma janela Electron desktop. O garçom consome a API para chamados (US-18); os outros fluxos de Sprint 3 e a administração ainda são prévias visuais. Regras, decisões e contratos estão em `docs/sprint-03.md`. Os próximos workspaces devem seguir package, porta, CORS e Electron dos apps existentes. As rotas operacionais sem login exigem rede interna. O bridge permanece restrito e as permissões são negadas por padrão. As capturas em `screenshots/` são referências visuais.
 
 Adicionar pasta com package.json em apps/; npm workspaces a reconhecerá. Reutilizar os pacotes compartilhados, registrar porta de desenvolvimento própria e origem CORS. Só acrescentar ao comando raiz `dev` quando fizer sentido executar junto. A distribuição por apps não é uma barreira de autorização: a API deverá verificar perfil de funcionário e sessão de cliente. Autenticação de funcionários ainda não foi implementada.
 

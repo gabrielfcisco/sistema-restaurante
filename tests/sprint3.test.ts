@@ -41,6 +41,6 @@ test('Sprint 3 HTTP: validação, consulta sem dados pessoais e contratos de cat
     assert.equal((await send('/garcom/itens/1/status', 'PATCH', { statusAtual: 'EM_PREPARO', status: 'ENTREGUE' })).status, 409);
     assert.equal((await send('/garcom/itens/0/status', 'PATCH', { statusAtual: 'PRONTO', status: 'ENTREGUE' })).status, 400);
     assert.equal((await send('/garcom/itens/1/status', 'PATCH', { statusAtual: 'PRONTO', status: 'ENTREGUE' })).status, 200);
-    for (const path of ['/garcom/chamados', '/atendimentos/1/extrato']) assert.equal((await send(path)).status, 404);
+    assert.equal((await send('/atendimentos/1/extrato')).status, 401);
   } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
 });

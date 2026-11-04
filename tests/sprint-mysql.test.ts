@@ -28,6 +28,7 @@ test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessõ
     await connection.query("INSERT INTO cliente (nome, cpf) VALUES ('Cliente legado ficticio', '11144477735')");
     await connection.query(await readFile('apps/api/prisma/migrations/20261003010000_cliente_telefone/migration.sql', 'utf8'));
     await connection.query(await readFile('apps/api/prisma/migrations/20261006000000_dispositivo_mesa/migration.sql', 'utf8'));
+    await connection.query(await readFile('apps/api/prisma/migrations/20261103000000_us18_chamadas/migration.sql', 'utf8'));
     url.pathname = `/${database}`;
     prisma = new PrismaClient({ adapter: new PrismaMariaDb(mysqlTestConfig(url, true)) });
     const db = prisma;
