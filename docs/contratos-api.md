@@ -1,5 +1,7 @@
 # Contratos da API — Sprint 01
 
+Regra atual de correção no preparo: cozinha e bar podem mover um item do próprio setor uma etapa por vez, nos dois sentidos: RECEBIDO ↔ EM_PREPARO ↔ PRONTO. Arrastar e os botões usam o mesmo PATCH com o status de origem. Voltar de PRONTO retira o item da fila do garçom; ENTREGUE permanece final. Esta regra prevalece sobre a descrição histórica abaixo.
+
 ## Contratos finais — US-15, US-17 e US-19
 
 Base `/api`, sem login para garçom/administração, somente em rede interna. Configurar HOST/firewall e CORS; CORS sozinho não limita o acesso à rede. Estas rotas estão implementadas e substituem as propostas correspondentes da Sprint 3:

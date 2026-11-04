@@ -15,6 +15,7 @@
   "dependencies": {
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "@restaurante/ui": "0.1.0",
     "@restaurante/api-client": "0.1.0",
     "@restaurante/contracts": "0.1.0"
   },

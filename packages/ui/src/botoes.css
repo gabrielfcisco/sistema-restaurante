@@ -1,0 +1,38 @@
+/* Ações de formulário, cartões e barras de ferramentas. */
+button.acao {
+  --fundo: #b94412;
+  --hover: #99360e;
+  --texto: white;
+  --borda: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button.acao:is(.secondary, .acao-secundaria) {
+  --fundo: #fff;
+  --hover: #fff4ed;
+  --texto: #803910;
+  --borda: #c9b8aa;
+}
+@media (hover: hover) {
+  button.acao:hover:not(:disabled) { background: var(--hover); }
+}
+button.acao:active:not(:disabled) { background: var(--hover); }
+button.acao:focus-visible { outline: 3px solid #226392; outline-offset: 2px; }
+button.acao:disabled { opacity: 0.55; cursor: not-allowed; }

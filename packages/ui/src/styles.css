@@ -1,3 +1,4 @@
+@import './botoes.css';
 :root { font-family: Inter, system-ui, sans-serif; color: #28241e; background: #faf6ef; font-synthesis: none; }
 * { box-sizing: border-box; }
 body { margin: 0; }

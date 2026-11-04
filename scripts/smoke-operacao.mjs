@@ -44,7 +44,24 @@ app.whenReady().then(async () => {
           await clickCard(window, id);
           await waitFor(window, `!!document.querySelector('.operation-column.${status} [data-item-id="${id}"]') && !document.querySelector('[data-item-id="${id}"] button:disabled')`);
         }
-        assert.equal(await evaluate(window, `document.querySelector('[data-item-id="${id}"] button') === null`), true);
+        // Arrasta para trás e para frente e verifica a fila real do garçom nos dois setores.
+        for (const destino of ['em_preparo', 'recebido', 'em_preparo', 'pronto']) {
+          await evaluate(window, `(() => {
+            const card = document.querySelector('[data-item-id="${id}"]');
+            const target = document.querySelector('.operation-column.${destino}');
+            const dataTransfer = new DataTransfer();
+            card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
+            return new Promise(resolve => setTimeout(() => {
+              target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer }));
+              target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer }));
+              card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer }));
+              resolve();
+            }, 0));
+          })()`);
+          await waitFor(window, `!!document.querySelector('.operation-column.${destino} [data-item-id="${id}"]') && !document.querySelector('[data-item-id="${id}"] button:disabled')`);
+          const fila = await (await fetch(process.env.OPERACAO_TEST_API + '/garcom/itens-prontos')).json();
+          assert.equal(fila.some(i => i.idItem === id), destino === 'pronto');
+        }
         const entrega = await fetch(process.env.OPERACAO_TEST_API + '/garcom/itens/' + id + '/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusAtual: 'PRONTO', status: 'ENTREGUE' }) });
         assert.equal(entrega.status, 200);
         await waitFor(window, `!document.querySelector('[data-item-id="${id}"]')`);

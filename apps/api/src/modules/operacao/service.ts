@@ -1,4 +1,4 @@
-import { STATUS_PREPARO, type AlterarStatusItemInput, type ItemFilaDto, type SetorOperacional, type StatusItemDto, type StatusPreparo } from '@restaurante/contracts';
+import { etapasVizinhas, STATUS_PREPARO, type AlterarStatusItemInput, type ItemFilaDto, type SetorOperacional, type StatusItemDto, type StatusPreparo } from '@restaurante/contracts';
 import type { PrismaClient } from '../../generated/prisma/client';
 import { exigir } from '../validacao';
 import { erroBanco } from '../sprint-service';
@@ -38,8 +38,8 @@ export class PrismaOperacaoService implements OperacaoService {
   async avancar(setor: CanalFila, idItem: number, input: AlterarStatusItemInput): Promise<StatusItemDto> {
     exigir(setor === 'GARCOM' ? input.statusAtual === 'PRONTO' && input.status === 'ENTREGUE' : input.status !== 'ENTREGUE',
       409, 'TRANSICAO_INVALIDA', 'A entrega de itens prontos é realizada pelo garçom.');
-    exigir(STATUS_PREPARO.indexOf(input.status) === STATUS_PREPARO.indexOf(input.statusAtual) + 1,
-      409, 'TRANSICAO_INVALIDA', 'Avance somente uma etapa do preparo.');
+    if (setor !== 'GARCOM') exigir(etapasVizinhas(input.statusAtual, input.status),
+      409, 'TRANSICAO_INVALIDA', 'Mova o item uma etapa por vez.');
     for (let attempt = 0; ; attempt++) {
       try {
         return await this.database().$transaction(async tx => {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { etapasVizinhas } from '@restaurante/contracts';
 import type { AlterarStatusItemInput, ItemFilaDto, SetorOperacional, StatusFila, StatusItemDto } from '@restaurante/contracts';
 import { Button } from './index';
 
@@ -19,6 +20,7 @@ export function PainelOperacional({ setor, cliente }: { setor: SetorOperacional;
   const [connectionError, setConnectionError] = useState(''), [actionError, setActionError] = useState('');
   const [filter, setFilter] = useState<StatusFila | ''>(''), [now, setNow] = useState(Date.now()), [reload, setReload] = useState(0);
   const [busy, setBusy] = useState<Set<number>>(new Set()), [feedback, setFeedback] = useState('');
+  const [arrastado, setArrastado] = useState<ItemFilaDto | null>(null);
   const locks = useRef(new Set<number>()), mounted = useRef(false), dataVersion = useRef(0);
   useEffect(() => {
     mounted.current = true;
@@ -51,25 +53,48 @@ export function PainelOperacional({ setor, cliente }: { setor: SetorOperacional;
   return <div className="operational-board">
     <header className="operation-header"><div className="operation-brand"><span aria-hidden="true" className="operation-mark">M</span><h1>{title}</h1></div><span role="status" className={'connection-badge ' + connection}>{connection === 'conectado' ? 'Atualizado' : connection === 'conectando' ? 'Conectando…' : 'Reconectando…'}</span></header>
     <main>
-      <div className="operation-toolbar"><span className="sector-badge">{title} vê somente seus itens</span><span className="operation-subtitle">Pedidos por ordem de chegada</span><div className="operation-controls"><label htmlFor="status-fila" className="sr-only">Filtrar por status</label><select id="status-fila" value={filter} onChange={e => setFilter(e.target.value as StatusFila | '')}><option value="">Todos os status</option>{columns.map(c => <option key={c.status} value={c.status}>{c.title}</option>)}</select><Button className="operation-refresh" onClick={() => setReload(n => n + 1)}>Atualizar</Button></div></div>
+      <div className="operation-toolbar"><span className="sector-badge">{title} vê somente seus itens</span><span className="operation-subtitle">Pedidos por ordem de chegada</span><div className="operation-controls"><label htmlFor="status-fila" className="sr-only">Filtrar por status</label><select id="status-fila" value={filter} onChange={e => setFilter(e.target.value as StatusFila | '')}><option value="">Todos os status</option>{columns.map(c => <option key={c.status} value={c.status}>{c.title}</option>)}</select><Button className="operation-refresh acao-secundaria" onClick={() => setReload(n => n + 1)}>Atualizar</Button></div></div>
+      <p className="operation-meta">{filter ? 'Selecione “Todos os status” para arrastar entre colunas.' : 'Arraste um item para a coluna ao lado para avançar ou voltar uma etapa.'}</p>
       {connectionError && <p className="operation-notice" role="alert">{connectionError} As ações ficam pausadas até a conexão voltar.</p>}
       {actionError && <p className="operation-notice operation-error" role="alert">{actionError}</p>}
       <span className="sr-only" role="status">{feedback}</span>
       <div className={'operation-columns' + (filter ? ' filtered' : '')}>{columns.filter(c => !filter || c.status === filter).map(column => {
         const rows = itens.filter(i => i.status === column.status);
-        return <section key={column.status} className={'operation-column ' + column.status.toLowerCase()} aria-labelledby={'column-' + column.status}>
+        const podeSoltar = connection === 'conectado' && arrastado && etapasVizinhas(arrastado.status, column.status);
+        return <section key={column.status} className={'operation-column ' + column.status.toLowerCase() + (podeSoltar ? ' drop-target' : '')}
+          aria-labelledby={'column-' + column.status}
+          onDragOver={e => { if (podeSoltar) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+          onDrop={e => {
+            e.preventDefault();
+            if (podeSoltar && arrastado) void avancar(arrastado, column.status);
+            setArrastado(null);
+          }}>
           <div className="column-heading"><h2 id={'column-' + column.status}>{column.title}</h2><span className="column-count">{rows.length} {rows.length === 1 ? 'item' : 'itens'}</span></div>
           {rows.length === 0 && <p className="operation-empty">{loaded ? 'Nenhum item nesta etapa.' : connection === 'reconectando' ? 'Aguardando conexão para carregar os pedidos.' : 'Carregando pedidos…'}</p>}
           {rows.map(item => {
             const minutes = Math.max(0, Math.floor((now - Date.parse(item.dataHora)) / 60000));
             const time = new Date(item.dataHora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            return <article key={item.idItem} className="operation-card" aria-label={'Item ' + item.idItem + ': ' + item.nomeProduto} data-item-id={item.idItem}>
+            return <article key={item.idItem} className="operation-card" aria-label={'Item ' + item.idItem + ': ' + item.nomeProduto} data-item-id={item.idItem}
+              draggable={!filter && connection === 'conectado' && !busy.has(item.idItem)}
+              onDragStart={e => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(item.idItem));
+                setArrastado(item);
+              }}
+              onDragEnd={() => setArrastado(null)}>
               <h3>{item.quantidade}× {item.nomeProduto}</h3>
               <p className="operation-meta">Mesa {String(item.numeroMesa).padStart(2, '0')} · Comanda #{item.idComanda}</p>
               <p className="operation-meta">Pedido #{item.idPedido} · <time dateTime={item.dataHora} title={new Date(item.dataHora).toLocaleString('pt-BR')}>{time}</time> · espera {minutes} min</p>
               {item.observacao && <p className="operation-observation"><strong>Observação:</strong> {item.observacao}</p>}
               <div className="operation-tags"><span className={'item-status ' + column.status.toLowerCase()}>{column.title}</span>{minutes >= 20 && <span className="item-overdue">Acima de 20 min</span>}</div>
-              {column.status === 'PRONTO' ? <p className="operation-meta">Aguardando retirada pelo garçom.</p> : <Button className="operation-action" disabled={busy.has(item.idItem) || connection !== 'conectado'} onClick={() => void avancar(item, column.next!)}>{busy.has(item.idItem) ? 'Atualizando…' : column.action}</Button>}
+              {column.status === 'PRONTO' && <p className="operation-meta">Aguardando retirada pelo garçom.</p>}
+              <div className="operation-card-actions">
+              {column.next && <Button className="operation-action" disabled={busy.has(item.idItem) || connection !== 'conectado'} onClick={() => void avancar(item, column.next!)}>{busy.has(item.idItem) ? 'Atualizando…' : column.action}</Button>}
+              {item.status !== 'RECEBIDO' && <button type="button" className="acao acao-secundaria operation-back" disabled={busy.has(item.idItem) || connection !== 'conectado'}
+                onClick={() => void avancar(item, item.status === 'PRONTO' ? 'EM_PREPARO' : 'RECEBIDO')}>
+                {item.status === 'PRONTO' ? 'Voltar ao preparo' : 'Voltar para recebidos'}
+              </button>}
+              </div>
             </article>;
           })}
         </section>;

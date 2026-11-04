@@ -1,3 +1,4 @@
+@import '@restaurante/ui/botoes.css';
 :root { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #26221f; background: #f5f0e6; font-synthesis: none; text-rendering: optimizeLegibility; }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
@@ -26,9 +27,7 @@ button { cursor: pointer; }
 .eyebrow { margin: 0 0 3px; color: #9b8c7c; font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
 .page-heading h2 { margin: 0; font-size: 31px; line-height: 1.15; font-weight: 900; }
 .page-heading p:last-child { margin: 7px 0 0; color: #817971; font-size: 14px; }
-.new-category { min-height: 46px; padding: 0 18px; border: 0; border-radius: 11px; color: #fff; background: #f66a1b; font-weight: 900; white-space: nowrap; }
 .new-category span { margin-right: 7px; font-size: 19px; vertical-align: -1px; }
-.new-category:hover { background: #e85d10; }
 .prototype-banner { display: flex; min-height: 42px; align-items: center; gap: 9px; margin-bottom: 20px; padding: 10px 13px; border: 1px solid #eed8b5; border-radius: 10px; color: #755b3b; background: #fff6e8; font-size: 13px; font-weight: 700; }
 .prototype-dot { width: 9px; height: 9px; border-radius: 50%; background: #e6a03c; }
 .admin-message { margin: 0 0 18px; padding: 12px 14px; border-radius: 10px; color: #705330; background: #fff1d6; font-size: 13px; }
@@ -59,19 +58,15 @@ button { cursor: pointer; }
 .visibility-cell { color: #6d665f; }
 .actions-heading { text-align: right; }
 .row-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.row-actions button { padding: 7px 10px; border: 1px solid #e9e3dc; border-radius: 8px; color: #51483f; background: #fff; font-size: 12px; font-weight: 800; }
-.row-actions button:first-child { color: #d85d1c; }
-.row-actions button:hover { background: #fff8f3; }
 .panel-footer { display: flex; justify-content: space-between; gap: 12px; padding: 13px 20px; border-top: 1px solid #f0ece7; color: #8b837b; font-size: 11px; }
 .category-guidance { display: flex; align-items: flex-start; gap: 13px; margin-top: 16px; padding: 17px 19px; }
 .guidance-icon { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #347ebd; background: #e8f3fc; font-weight: 900; }
 .category-guidance h3 { font-size: 14px; }
 .category-guidance p { margin: 4px 0 0; color: #857d75; font-size: 12px; line-height: 1.5; }
 @media (max-width: 1050px) { .admin-layout { grid-template-columns: 220px minmax(0,1fr); gap: 18px; padding: 20px; } .admin-sidebar { padding: 20px 15px; } .category-table th,.category-table td { padding-inline: 13px; } }
-@media (max-width: 760px) { .admin-topbar { min-height: 72px; padding: 12px 16px; } .admin-brand { gap: 10px; } .admin-brand h1 { font-size: 22px; } .admin-mark { width: 42px; height: 42px; border-radius: 13px; } .story-badge { padding: 7px 10px; font-size: 11px; } .admin-layout { display: block; padding: 14px; } .admin-sidebar { min-height: 0; margin-bottom: 18px; padding: 12px; border-radius: 14px; } .sidebar-brand,.sidebar-footnote { display: none; } .admin-sidebar nav { display: flex; overflow-x: auto; gap: 7px; } .nav-item { min-height: 42px; flex: 0 0 auto; padding: 0 12px; font-size: 12px; } .nav-item span { width: auto; font-size: 15px; } .page-heading { align-items: flex-start; } .page-heading h2 { font-size: 26px; } .page-heading p:last-child { max-width: 350px; font-size: 13px; } .new-category { min-height: 42px; padding-inline: 12px; font-size: 12px; } .summary-grid { gap: 8px; } .summary-card { min-height: 106px; padding: 13px 12px; } .summary-card span { font-size: 12px; } .summary-card strong { font-size: 23px; } .summary-card small { font-size: 10px; } .category-table { min-width: 680px; } .panel-footer { flex-direction: column; } }
+@media (max-width: 760px) { .admin-topbar { min-height: 72px; padding: 12px 16px; } .admin-brand { gap: 10px; } .admin-brand h1 { font-size: 22px; } .admin-mark { width: 42px; height: 42px; border-radius: 13px; } .story-badge { padding: 7px 10px; font-size: 11px; } .admin-layout { display: block; padding: 14px; } .admin-sidebar { min-height: 0; margin-bottom: 18px; padding: 12px; border-radius: 14px; } .sidebar-brand,.sidebar-footnote { display: none; } .admin-sidebar nav { display: flex; overflow-x: auto; gap: 7px; } .nav-item { min-height: 42px; flex: 0 0 auto; padding: 0 12px; font-size: 12px; } .nav-item span { width: auto; font-size: 15px; } .page-heading { align-items: flex-start; } .page-heading h2 { font-size: 26px; } .page-heading p:last-child { max-width: 350px; font-size: 13px; } .summary-grid { gap: 8px; } .summary-card { min-height: 106px; padding: 13px 12px; } .summary-card span { font-size: 12px; } .summary-card strong { font-size: 23px; } .summary-card small { font-size: 10px; } .category-table { min-width: 680px; } .panel-footer { flex-direction: column; } }
 @media (max-width: 460px) { .story-badge { max-width: 138px; white-space: normal; text-align: center; } .page-heading { flex-direction: column; } .new-category { align-self: stretch; } .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .summary-card:last-child { grid-column: span 2; } .panel-heading { padding: 17px 15px 12px; } .category-table th,.category-table td { padding-inline: 10px; } }
 .category-form { padding: 24px; margin: 20px 0; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 .category-form h3, .category-form p { flex-basis: 100%; }
 .category-form input:not([type=checkbox]) { min-height: 44px; padding: 10px; border: 1px solid #ded8ce; border-radius: 8px; font: inherit; }
-.admin-main button:disabled { opacity: .55; cursor: wait; }
 .category-name strong { overflow-wrap: anywhere; }

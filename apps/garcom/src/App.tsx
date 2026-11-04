@@ -74,14 +74,14 @@ export function App() {
       {aviso && <p role="status" className="action-notice">{aviso}</p>}
       <section className="waiter-section"><h2>Chamados</h2>
         {chamados === null ? <p role="status">Aguardando atualização dos chamados…</p> : chamados.length === 0 ? <p className="empty-card">Nenhuma mesa chamando no momento.</p> :
-          chamados.map(c => <article className="waiter-card" key={c.idChamada}><h3>Mesa {c.numeroMesa}</h3><p>Solicitou atendimento às {new Date(c.criadaEm).toLocaleTimeString('pt-BR')}</p><button className="primary-button" disabled={concluindo !== null} onClick={() => void concluir(c.idChamada)}>Concluir atendimento</button></article>)}
+          chamados.map(c => <article className="waiter-card" key={c.idChamada}><h3>Mesa {c.numeroMesa}</h3><p>Solicitou atendimento às {new Date(c.criadaEm).toLocaleTimeString('pt-BR')}</p><button className="acao primary-button" disabled={concluindo !== null} onClick={() => void concluir(c.idChamada)}>Concluir atendimento</button></article>)}
       </section>
       <section className="waiter-section" aria-labelledby="consulta-title">
         <h2 id="consulta-title">Consultar mesa</h2>
         <form className="waiter-card" onSubmit={e => { e.preventDefault(); void buscar(); }}>
           <label htmlFor="numero-mesa">Número da mesa</label>
           <input id="numero-mesa" type="number" min="1" max="4294967295" step="1" required value={numero} onChange={e => { versao.current++; setConsultando(false); setNumero(e.target.value); setMesa(null); setComanda(null); setErroConsulta(''); }} />
-          <button className="primary-button" disabled={consultando}>Buscar mesa</button>
+          <button className="acao primary-button" disabled={consultando}>Buscar mesa</button>
         </form>
         {consultando && <p role="status">Consultando…</p>}
         {erroConsulta && <p role="alert" className="action-notice">{erroConsulta}</p>}
@@ -89,7 +89,7 @@ export function App() {
           {!mesa.comandas.length ? <p>Nenhuma comanda ativa nesta mesa.</p> : <><label htmlFor="comanda">Selecione uma comanda ativa</label><select id="comanda" value={comanda?.idComanda ?? ''} disabled={consultando} onChange={e => { if (e.target.value) void consultar(Number(e.target.value)); }}><option value="">Selecionar comanda</option>{mesa.comandas.map(c => <option key={c.idComanda} value={c.idComanda}>Comanda #{c.idComanda}</option>)}</select></>}
         </div>}
         {comanda && <article className="waiter-card"><h3>Comanda #{comanda.idComanda} · Mesa {comanda.numeroMesa}</h3>
-          <button type="button" onClick={() => void consultar(comanda.idComanda)} disabled={consultando}>Atualizar consumo</button>
+          <button className="acao acao-secundaria" type="button" onClick={() => void consultar(comanda.idComanda)} disabled={consultando}>Atualizar consumo</button>
           {!comanda.pedidos.length && <p>Nenhum pedido confirmado.</p>}
           {comanda.pedidos.map(p => <section key={p.idPedido}><h4>Pedido #{p.idPedido} · {status[p.status]}</h4><ul>{p.itens.map(i => <li key={i.idItem}>{i.quantidade} × {i.nomeProduto} — {status[i.status]}<br />{moeda(i.precoUnitario)} por unidade · {moeda(i.subtotal)}</li>)}</ul></section>)}
           <p><strong>Total parcial: {moeda(comanda.total)}</strong></p>
@@ -97,10 +97,10 @@ export function App() {
       </section>
       <section className="waiter-section ready-section" aria-labelledby="retirada-title">
         <div className="section-heading"><h2 id="retirada-title">Pedidos prontos</h2><span className="section-count blue-count">{itens.length}</span></div>
-        {selecionado ? <div className="waiter-card"><h3>Confirmar entrega</h3><p>Mesa {selecionado.numeroMesa} · Comanda #{selecionado.idComanda}</p><p>{selecionado.quantidade} × {selecionado.nomeProduto}</p><p>Confirme a entrega deste item ao cliente.</p><button className="primary-button" disabled={entregando || conexao !== 'conectado'} onClick={() => void entregar()}>{entregando ? 'Confirmando…' : 'Confirmar entrega'}</button><button disabled={entregando} onClick={() => setSelecionado(null)}>Voltar</button></div> :
+        {selecionado ? <div className="waiter-card"><h3>Confirmar entrega</h3><p>Mesa {selecionado.numeroMesa} · Comanda #{selecionado.idComanda}</p><p>{selecionado.quantidade} × {selecionado.nomeProduto}</p><p>Confirme a entrega deste item ao cliente.</p><button className="acao primary-button" disabled={entregando || conexao !== 'conectado'} onClick={() => void entregar()}>{entregando ? 'Confirmando…' : 'Confirmar entrega'}</button><button className="acao acao-secundaria" disabled={entregando} onClick={() => setSelecionado(null)}>Voltar</button></div> :
           (['COZINHA', 'BAR'] as const).map(setor => <section className="sector-group" key={setor}><div className="sector-heading"><h3>{setor === 'BAR' ? 'Bar' : 'Cozinha'}</h3></div>
             {conexao === 'conectado' && !itens.some(i => i.setor === setor) && <p className="empty-card">Nenhum item pronto neste setor.</p>}
-            <div className="card-list">{itens.filter(i => i.setor === setor).map(i => <article key={i.idItem} className="waiter-card ready-card"><p className="order-meta">Mesa {i.numeroMesa} · Comanda #{i.idComanda} · Pedido #{i.idPedido}</p><h4>{i.quantidade} × {i.nomeProduto}</h4>{i.observacao && <p>{i.observacao}</p>}<p className="ready-time">Pedido recebido em {new Date(i.dataHora).toLocaleString('pt-BR')}</p><button className="primary-button" disabled={conexao !== 'conectado'} onClick={() => setSelecionado(i)}>Marcar como entregue</button></article>)}</div>
+            <div className="card-list">{itens.filter(i => i.setor === setor).map(i => <article key={i.idItem} className="waiter-card ready-card"><p className="order-meta">Mesa {i.numeroMesa} · Comanda #{i.idComanda} · Pedido #{i.idPedido}</p><h4>{i.quantidade} × {i.nomeProduto}</h4>{i.observacao && <p>{i.observacao}</p>}<p className="ready-time">Pedido recebido em {new Date(i.dataHora).toLocaleString('pt-BR')}</p><button className="acao primary-button" disabled={conexao !== 'conectado'} onClick={() => setSelecionado(i)}>Marcar como entregue</button></article>)}</div>
           </section>)}
       </section>
     </main>
