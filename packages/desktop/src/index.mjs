@@ -13,7 +13,7 @@ export async function installApiBridge(window, profile, appDirectory, trustedUrl
     ? await readDefaultPanelConfig(configPath) : null);
   const trusted = event => event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame && trustedUrl(event.senderFrame.url);
   ipcMain.removeHandler('restaurante:painel');
-  if (operational) ipcMain.handle('restaurante:painel', event => {
+  if (operational || profile === 'mesa') ipcMain.handle('restaurante:painel', event => {
     if (!trusted(event) || !config) throw new Error('Configuração do painel indisponível.');
     return { apiUrl: config.apiUrl };
   });

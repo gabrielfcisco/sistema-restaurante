@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.tsx",
+    "./botoes.css": "./src/botoes.css",
     "./styles.css": "./src/styles.css",
     "./operacao": "./src/OperationalBoard.tsx",
     "./operations.css": "./src/operations.css"

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto, AtendimentoMesaDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, StatusPreparo } from '@restaurante/contracts';
-import type { PrismaClient, Prisma, Comanda, Cartao, Produto } from '../generated/prisma/client';
+import type { AbrirAtendimentoInput, AtendimentoDto, ClienteDto, CriarClienteInput, MesaDetalheDto, MesaDto, SessaoMesaDto, LiberarMesaDto, AtendimentoMesaDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, StatusPreparo, ChamadaDto, ExtratoComandaDto } from '@restaurante/contracts';
+import type { PrismaClient, Prisma, Comanda, Cartao, Produto, Categoria } from '../generated/prisma/client';
 import { ErroApi, exigir, telefone } from './validacao';
 import { statusAgregado, statusPreparo } from './operacao/service';
 
@@ -12,13 +12,14 @@ function atendimento(c: Comanda & { cartao: Cartao | null }): AtendimentoDto {
   return { idComanda: c.idComanda, idCliente: c.idCliente, idMesa: c.idMesa, idCartao: c.idCartao,
     codigoCartao: c.cartao?.codigo ?? null, status: c.status, dataAbertura: c.dataAbertura.toISOString() };
 }
-function produtoResumo(p: Produto): ProdutoResumoDto {
+function produtoResumo(p: Produto & { grupo: Categoria }): ProdutoResumoDto {
   return {
     idProduto: p.idProduto, nome: p.nome, descricao: p.descricao, preco: Number(p.preco),
-    categoria: p.categoria, setor: p.setor, disponivel: p.ativo
+    categoria: p.categoria, nomeCategoria: p.grupo.nome, setor: p.setor, disponivel: p.ativo && p.grupo.ativo
   };
 }
 export interface SprintService {
+  categoriasDetalhadas(token: string): Promise<import('@restaurante/contracts').CategoriaDto[]>;
   mesaDispositivo(token: string, idMesaInicial: number): Promise<{ idMesa: number; numero: number }>;
   configurarDispositivo(token: string, numero: number): Promise<{ idMesa: number; numero: number }>;
   buscarCliente(cpf: string): Promise<ClienteDto>;
@@ -35,6 +36,12 @@ export interface SprintService {
   produtosCardapio(token: string, categoria?: CategoriaCardapio): Promise<ProdutoResumoDto[]>;
   detalheProduto(token: string, idProduto: number): Promise<ProdutoResumoDto>;
   confirmarPedido(idComanda: number, input: CriarPedidoInput, token: string, key: string): Promise<{ dto: PedidoConfirmadoDto; replay: boolean }>;
+  listarPedidosComanda(idComanda: number, token: string): Promise<PedidoConfirmadoDto[]>;
+  listarPedidosComandaInterno?(idComanda: number): Promise<PedidoConfirmadoDto[]>;
+  criarChamada(idComanda: number, token: string): Promise<ChamadaDto>;
+  listarChamados(): Promise<ChamadaDto[]>;
+  concluirChamada(idChamada: number): Promise<ChamadaDto>;
+  extratoComanda(idComanda: number, token: string): Promise<ExtratoComandaDto>;
 }
 export function erroBanco(error: unknown): Error {
   if (error instanceof ErroApi) return error;
@@ -147,6 +154,7 @@ export class PrismaSprintService implements SprintService {
       const mesa = await this.bloquearMesa(tx, idMesa);
       exigir(mesa.status !== 'MANUTENCAO', 409, 'MESA_INDISPONIVEL', 'Mesa em manutenção não pode ser liberada por este fluxo.');
       const now = new Date();
+      await tx.chamada.updateMany({ where: { idMesa, status: 'PENDENTE' }, data: { status: 'CANCELADA', finalizadaEm: now } });
       await tx.sessaoMesa.updateMany({ where: { comanda: { idMesa }, revogadaEm: null }, data: { revogadaEm: now } });
       await tx.vinculoCartao.deleteMany({ where: { comanda: { idMesa } } });
       const closed = await tx.comanda.updateMany({ where: { idMesa, ...filtroAtivo }, data: { status: 'FECHADA', dataFechamento: now } });
@@ -190,21 +198,25 @@ export class PrismaSprintService implements SprintService {
   }
   async categoriasCardapio(token: string): Promise<CategoriaCardapio[]> {
     await this.sessao(token);
-    const rows = await this.db().produto.findMany({ where: { ativo: true }, select: { categoria: true }, distinct: ['categoria'] });
-    const ordem: CategoriaCardapio[] = ['PRATO', 'SOBREMESA', 'BEBIDA'];
-    return ordem.filter(c => rows.some(r => r.categoria === c));
+    const rows = await this.db().categoria.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
+    return rows.map(c => c.idCategoria);
+  }
+  async categoriasDetalhadas(token: string) {
+    await this.sessao(token);
+    return this.db().categoria.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
   }
   async produtosCardapio(token: string, categoria?: CategoriaCardapio): Promise<ProdutoResumoDto[]> {
     await this.sessao(token);
     const produtos = await this.db().produto.findMany({
-      where: { ativo: true, ...(categoria ? { categoria } : {}) },
+      where: { ativo: true, grupo: { ativo: true }, ...(categoria ? { categoria } : {}) },
+      include: { grupo: true },
       orderBy: [{ categoria: 'asc' }, { nome: 'asc' }, { idProduto: 'asc' }]
     });
     return produtos.map(produtoResumo);
   }
   async detalheProduto(token: string, idProduto: number): Promise<ProdutoResumoDto> {
     await this.sessao(token);
-    const produto = await this.db().produto.findUnique({ where: { idProduto } });
+    const produto = await this.db().produto.findUnique({ where: { idProduto }, include: { grupo: true } });
     exigir(produto, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
     return produtoResumo(produto);
   }
@@ -250,12 +262,17 @@ export class PrismaSprintService implements SprintService {
       }
 
       const idsUnicos = [...new Set(normalizedItens.map(i => i.idProduto))];
-      const produtos = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } } });
+      const referencias = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } }, select: { categoria: true } });
+      // Serializa confirmação e inativação, sempre na mesma ordem de categorias.
+      for (const categoria of [...new Set(referencias.map(p => p.categoria))].sort()) {
+        await tx.$queryRaw`SELECT id_categoria FROM categoria WHERE id_categoria = ${categoria} FOR UPDATE`;
+      }
+      const produtos = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } }, include: { grupo: true } });
       const mapaProdutos = new Map(produtos.map(p => [p.idProduto, p]));
       for (const item of normalizedItens) {
         const p = mapaProdutos.get(item.idProduto);
         exigir(p, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
-        exigir(p.ativo, 409, 'PRODUTO_INDISPONIVEL', `O item "${p.nome}" está indisponível no momento.`);
+        exigir(p.ativo && p.grupo.ativo, 409, 'PRODUTO_INDISPONIVEL', `O item "${p.nome}" está indisponível no momento.`);
       }
 
       const dataHora = new Date();
@@ -283,6 +300,68 @@ export class PrismaSprintService implements SprintService {
       this.pedidosIdempotentes.set(keyScope, { fingerprint, idPedido: criado.idPedido, idComanda });
       return { dto: this.montarPedidoDto(criado), replay: false };
     });
+  }
+  async listarPedidosComanda(idComanda: number, token: string): Promise<PedidoConfirmadoDto[]> {
+    const sessao = await this.sessao(token);
+    exigir(sessao.idComanda === idComanda, 403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
+    return this.listarPedidosComandaInterno(idComanda);
+  }
+  async criarChamada(idComanda: number, token: string): Promise<ChamadaDto> {
+    return this.transacao(async tx => {
+      const sessao = await tx.sessaoMesa.findUnique({ where: { tokenHash: hash(token) }, include: { comanda: { include: { mesa: true, cartao: true, vinculoAtivo: true } } } });
+      exigir(sessao && !sessao.revogadaEm && sessao.expiraEm.getTime() > Date.now(), 401, 'SESSAO_INVALIDA', 'Sessão ausente, expirada ou revogada.');
+      const c = sessao.comanda;
+      exigir(ativos.some(s => s === c.status) && c.dataFechamento === null && c.vinculoAtivo && c.vinculoAtivo.idCartao === c.idCartao && c.cartao && c.mesa.status === 'OCUPADA', 401, 'SESSAO_INVALIDA', 'Atendimento encerrado ou alterado. Identifique seu cartão novamente.');
+      exigir(c.idComanda === idComanda, 403, 'COMANDA_INCORRETA', 'A sessão não pertence à comanda informada.');
+      await this.bloquearMesa(tx, c.idMesa);
+      const atual = await tx.sessaoMesa.findUnique({ where: { tokenHash: hash(token) }, include: { comanda: { include: { mesa: true, cartao: true, vinculoAtivo: true } } } });
+      exigir(atual && !atual.revogadaEm && atual.expiraEm.getTime() > Date.now(), 401, 'SESSAO_INVALIDA', 'Sessão ausente, expirada ou revogada.');
+      const comandaAtual = atual.comanda;
+      exigir(comandaAtual.idComanda === idComanda && ativos.some(s => s === comandaAtual.status) && comandaAtual.dataFechamento === null
+        && comandaAtual.vinculoAtivo && comandaAtual.vinculoAtivo.idCartao === comandaAtual.idCartao && comandaAtual.cartao && comandaAtual.mesa.status === 'OCUPADA',
+        401, 'SESSAO_INVALIDA', 'Atendimento encerrado ou alterado. Identifique seu cartão novamente.');
+      const existente = await tx.chamada.findFirst({ where: { idMesa: c.idMesa, status: 'PENDENTE' }, include: { mesa: true } });
+      const chamada = existente ?? await tx.chamada.create({ data: { idMesa: c.idMesa }, include: { mesa: true } });
+      return this.chamadaDto(chamada);
+    });
+  }
+  async listarChamados(): Promise<ChamadaDto[]> {
+    const rows = await this.db().chamada.findMany({ where: { status: 'PENDENTE' }, include: { mesa: true }, orderBy: [{ criadaEm: 'asc' }, { idChamada: 'asc' }] });
+    return rows.map(row => this.chamadaDto(row));
+  }
+  async concluirChamada(idChamada: number): Promise<ChamadaDto> {
+    return this.transacao(async tx => {
+      const row = await tx.chamada.findUnique({ where: { idChamada }, include: { mesa: true } });
+      exigir(row, 404, 'CHAMADA_INEXISTENTE', 'Chamada não encontrada.');
+      await this.bloquearMesa(tx, row.idMesa);
+      const updated = await tx.chamada.updateMany({ where: { idChamada, status: 'PENDENTE' }, data: { status: 'CONCLUIDA', finalizadaEm: new Date() } });
+      exigir(updated.count === 1, 409, 'CHAMADA_CONCLUIDA', 'A chamada já foi concluída ou cancelada.');
+      const result = await tx.chamada.findUniqueOrThrow({ where: { idChamada }, include: { mesa: true } });
+      return this.chamadaDto(result);
+    });
+  }
+  async extratoComanda(idComanda: number, token: string): Promise<ExtratoComandaDto> {
+    const pedidos = await this.listarPedidosComanda(idComanda, token);
+    const itens = pedidos.flatMap(p => p.itens.map(i => ({ idItem: i.idItem, idPedido: p.idPedido, nomeProduto: i.nomeProduto, quantidade: i.quantidade, precoUnitario: i.precoUnitario, subtotal: i.subtotal, status: i.status })));
+    const totalCentavos = itens.reduce((sum, i) => sum + Math.round(i.subtotal * 100), 0);
+    return { idComanda, itens, total: totalCentavos / 100 };
+  }
+  private chamadaDto(row: { idChamada: number; idMesa: number; status: 'PENDENTE' | 'CONCLUIDA' | 'CANCELADA'; criadaEm: Date; mesa: { numero: number } }): ChamadaDto {
+    return { idChamada: row.idChamada, idMesa: row.idMesa, numeroMesa: row.mesa.numero, status: row.status, criadaEm: row.criadaEm.toISOString() };
+  }
+  async listarPedidosComandaInterno(idComanda: number): Promise<PedidoConfirmadoDto[]> {
+    const comanda = await this.db().comanda.findUnique({
+      where: { idComanda },
+      include: { mesa: true }
+    });
+    exigir(comanda && ativos.some(s => s === comanda.status) && comanda.dataFechamento === null && comanda.mesa.status === 'OCUPADA',
+      409, 'COMANDA_ENCERRADA', 'Comanda encerrada.');
+    const pedidos = await this.db().pedido.findMany({
+      where: { idComanda },
+      include: { itens: { include: { produto: true }, orderBy: { idItem: 'asc' } }, comanda: { include: { mesa: true } } },
+      orderBy: [{ dataHora: 'asc' }, { idPedido: 'asc' }]
+    });
+    return pedidos.map(p => this.montarPedidoDto(p));
   }
   private montarPedidoDto(pedido: {
     idPedido: number;

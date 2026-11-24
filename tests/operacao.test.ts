@@ -50,16 +50,23 @@ test('rotas públicas impõem setor no servidor, ignorando setor no query/body',
     assert.deepEqual(calls, ['COZINHA', 'BAR', 'COZINHA']);
   });
 });
-test('PATCH valida IDs/status antes do serviço e preserva erro de concorrência', async () => {
+test('PATCH valida IDs/status antes do serviço, bloqueia ENTREGUE no painel de preparo e preserva erro de concorrência', async () => {
   let calls = 0;
   await withApi({
     async listar() { return []; },
-    async avancar() { calls++; throw new ErroApi(409, 'ITEM_ALTERADO', 'Outro operador atualizou o item.'); }
+    async avancar(_setor, _id, input) {
+      if (input.status === 'ENTREGUE') throw new ErroApi(409, 'TRANSICAO_INVALIDA', 'Avance somente uma etapa do preparo (RECEBIDO → EM_PREPARO → PRONTO).');
+      calls++;
+      throw new ErroApi(409, 'ITEM_ALTERADO', 'Outro operador atualizou o item.');
+    }
   }, async url => {
     const patch = (id: string, body: unknown) => fetch(url + '/bar/itens/' + id + '/status', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     for (const body of [null, {}, { statusAtual: 'RECEBIDO', status: 'PENDENTE' }, { statusAtual: 'ENTREGUE', status: 'PRONTO' }]) assert.equal((await patch('1', body)).status, 400);
     assert.equal((await patch('0', { statusAtual: 'RECEBIDO', status: 'EM_PREPARO' })).status, 400);
     assert.equal(calls, 0);
+    const invalidDelivered = await patch('1', { statusAtual: 'PRONTO', status: 'ENTREGUE' });
+    assert.equal(invalidDelivered.status, 409);
+    assert.equal((await invalidDelivered.json()).error.code, 'TRANSICAO_INVALIDA');
     const conflict = await patch('1', { statusAtual: 'RECEBIDO', status: 'EM_PREPARO' });
     assert.equal(conflict.status, 409); assert.equal((await conflict.json()).error.code, 'ITEM_ALTERADO');
   });

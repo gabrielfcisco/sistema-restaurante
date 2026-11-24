@@ -39,6 +39,9 @@ export type SetorOperacional = 'COZINHA' | 'BAR';
 export const STATUS_PREPARO = ['RECEBIDO', 'EM_PREPARO', 'PRONTO', 'ENTREGUE'] as const;
 export type StatusPreparo = typeof STATUS_PREPARO[number];
 export type StatusFila = Exclude<StatusPreparo, 'ENTREGUE'>;
+export function etapasVizinhas(origem: StatusFila, destino: StatusPreparo) {
+  return destino !== 'ENTREGUE' && Math.abs(STATUS_PREPARO.indexOf(destino) - STATUS_PREPARO.indexOf(origem)) === 1;
+}
 export interface ItemFilaDto {
   idItem: number; idPedido: number; idComanda: number; idMesa: number; numeroMesa: number;
   nomeProduto: string; quantidade: number; observacao: string | null; setor: SetorOperacional;
@@ -47,14 +50,25 @@ export interface ItemFilaDto {
 export interface AlterarStatusItemInput { statusAtual: StatusFila; status: StatusPreparo }
 export interface StatusItemDto { idItem: number; status: StatusPreparo; statusPedido: StatusPreparo }
 export interface FilaEventoDto { itens: ItemFilaDto[] }
+export interface PedidosComandaEventoDto { pedidos: PedidoConfirmadoDto[] }
+export type StatusChamada = 'PENDENTE' | 'CONCLUIDA' | 'CANCELADA';
+export interface ChamadaDto { idChamada: number; idMesa: number; numeroMesa: number; status: StatusChamada; criadaEm: string }
+export interface ExtratoComandaDto { idComanda: number; itens: Array<{ idItem: number; idPedido: number; nomeProduto: string; quantidade: number; precoUnitario: number; subtotal: number; status: StatusPreparo }>; total: number }
+export interface ChamadosEventoDto { chamados: ChamadaDto[] }
 
-export type CategoriaCardapio = 'PRATO' | 'SOBREMESA' | 'BEBIDA';
+export type CategoriaCardapio = string;
+export interface CategoriaDto { idCategoria: string; nome: string; ativo: boolean }
+export interface AlterarCategoriaInput { nome?: string; ativo?: boolean }
+export interface ComandaGarcomResumoDto { idComanda: number; status: StatusComanda; dataAbertura: string }
+export interface MesaGarcomDto { idMesa: number; numeroMesa: number; comandas: ComandaGarcomResumoDto[] }
+export interface ComandaGarcomDto extends ComandaGarcomResumoDto { idMesa: number; numeroMesa: number; pedidos: PedidoConfirmadoDto[]; total: number }
 export interface ProdutoResumoDto {
   idProduto: number;
   nome: string;
   descricao: string | null;
   preco: number;
   categoria: CategoriaCardapio;
+  nomeCategoria?: string;
   setor: SetorOperacional;
   disponivel: boolean;
 }

@@ -1,6 +1,29 @@
 # Contratos da API — Sprint 01
 
-As rotas operacionais das US-12/13 estão implementadas e documentadas em [cozinha e bar](us-12-us-13.md): GET de itens, GET de eventos SSE e PATCH de status por setor. As demais rotas da Sprint 2 continuam planejadas.
+Regra atual de correção no preparo: cozinha e bar podem mover um item do próprio setor uma etapa por vez, nos dois sentidos: RECEBIDO ↔ EM_PREPARO ↔ PRONTO. Arrastar e os botões usam o mesmo PATCH com o status de origem. Voltar de PRONTO retira o item da fila do garçom; ENTREGUE permanece final. Esta regra prevalece sobre a descrição histórica abaixo.
+
+## Contratos finais — US-15, US-17 e US-19
+
+Base `/api`, sem login para garçom/administração, somente em rede interna. Configurar HOST/firewall e CORS; CORS sozinho não limita o acesso à rede. Estas rotas estão implementadas e substituem as propostas correspondentes da Sprint 3:
+
+| Método/rota | Entrada e retorno |
+|---|---|
+| GET `/garcom/itens-prontos` | `ItemFilaDto[]`, apenas PRONTO de ambos os setores e comandas ativas, ordenados por chegada/pedido/item. |
+| PATCH `/garcom/itens/:idItem/status` | `{statusAtual:"PRONTO",status:"ENTREGUE"}` → `StatusItemDto`. Conflito 409 se já alterado/encerrado; 404 inexistente. Item e agregado atualizam atomicamente. |
+| GET `/garcom/eventos` | SSE `fila` com `{itens:[]}`, `indisponivel` em falha, heartbeat 15s/retry 3s; reconciliação no servidor a cada 2s enquanto conectado, igual aos painéis existentes. |
+| GET `/garcom/mesas?numero=8` | Busca por número público → `MesaGarcomDto` com idMesa, numeroMesa e comandas ativas (id/status/abertura). Mesa inexistente 404; mesa sem comanda retorna lista vazia. |
+| GET `/garcom/mesas/:idMesa/comandas` | Mesmo DTO por ID interno. |
+| GET `/garcom/comandas/:idComanda` | `ComandaGarcomDto`, pedidos/itens/status, preços/subtotais e total parcial em Decimal convertido para número JSON. Inclui entregues. Encerrada 409, inexistente 404. Sem dados pessoais. |
+| GET `/administracao/categorias` | `CategoriaDto[]`: idCategoria textual estável, nome e ativo. |
+| POST `/administracao/categorias` | `{nome}` → 201 CategoriaDto ativa. |
+| PATCH `/administracao/categorias/:idCategoria` | `{nome?,ativo?}` → 200 CategoriaDto; requer pelo menos um campo. |
+| GET `/cardapio/categorias/detalhes` | Bearer de sessão; categorias ativas com ID/nome/status, inclusive sem produtos. |
+
+Nome obrigatório após trim, até 120 caracteres, único sem diferenciar caixa (`utf8mb4_unicode_ci`, também insensível a acentos conforme convenção do banco). Duplicidade retorna 409 CATEGORIA_DUPLICADA; entrada inválida 400. Não há DELETE nem gerenciamento de produtos.
+
+`GET /cardapio/categorias` preserva array de chaves textuais; produtos preservam `categoria` e acrescentam `nomeCategoria`. Categorias inativas ocultam produtos; detalhe informa indisponibilidade e confirmação rejeita com 409 PRODUTO_INDISPONIVEL, serializada com a alteração da categoria. Produtos/histórico não são removidos. Cozinha/bar mantêm PRONTO visível até entrega pelo garçom e rejeitam ENTREGUE (409); essa responsabilidade substitui a etapa final anterior da Sprint 2.
+
+As rotas de catálogo/pedidos (US-07 a US-11) e as rotas operacionais das US-12/13 estão implementadas. Para filas, SSE, transições, compatibilidade e testes, consulte [cozinha e bar](us-12-us-13.md). As propostas antigas abaixo são mantidas como referência histórica da preparação; não representam o estado atual quando divergirem dos contratos finais.
 
 Base `/api`, JSON. Rotas organizadas em `apps/api/src/modules/{clientes,mesas,comandas,acessos}/routes.ts`, registradas por `sprint-routes.ts`. Autorização compartilhada em `autorizacao.ts` e transações em `sprint-service.ts`; DTOs em `packages/contracts/src/index.ts`. Não inclui interfaces, leitura da câmera, pedidos ou pagamento.
 
@@ -68,9 +91,9 @@ Rotas técnicas públicas existentes: GET /health (processo), GET /ready (banco,
 
 Não há GET /cartoes/disponiveis: a recepção digita o código físico. Cancelamento individual, CRUD de mesas, login individual e demais sprints não foram adicionados.
 
-## Sprint 2 — contratos planejados (US-07 a US-13, Grupo 9)
+## Sprint 2 — referência da preparação (US-07 a US-13, Grupo 9)
 
-As rotas abaixo são documentação de preparação; **não estão implementadas**. Critérios, gaps de schema e autorização estão detalhados em `docs/sprint-02.md`. Não publicar handlers até implementar validação e autorização correspondentes.
+Esta tabela registra o desenho original. US-07 a US-13 já estão implementadas; em caso de divergência, prevalecem as seções de contrato final e `docs/us-12-us-13.md`. Não usar a tabela como lista de rotas ainda pendentes.
 
 | História | Método e rota planejada | Permissão | Dados/resultado |
 |---|---|---|---|
@@ -86,3 +109,13 @@ As rotas abaixo são documentação de preparação; **não estão implementadas
 | US-13 | PATCH `/bar/itens/:idItem/status` | Sem login (painel na rede interna) | Avança item BAR uma etapa; sequência RECEBIDO → EM_PREPARO → PRONTO → ENTREGUE. |
 
 Itens são roteados pelo `Produto.setor` no servidor: COZINHA ou BAR. Não aceitar `setor` enviado no corpo. Cada confirmação cria um novo Pedido dentro da mesma comanda; itens antigos ficam no histórico/fechamento e nunca são reenviados às filas. Painéis avançam apenas itens do seu setor em sequência e publicam mudanças via SSE. O status agregado do Pedido é o estágio menos avançado de seus itens, recalculado na mesma transação da mudança do item; quando todos estão `ENTREGUE`, o Pedido também fica `ENTREGUE`. Por decisão do Grupo 9, os painéis não exigem login; implantar em rede interna, configurando `HOST` e `CORS_ORIGINS`. GET da fila é o snapshot/reconciliação. Imagem genérica de teste deve ser commitada em `assets/cardapio/` e sua chave relativa persistida em Produto por migration aditiva; upload/admin e imagens reais são futuros.
+
+## Sprint 3 — rotas e propostas (US-14 a US-19 e US-21)
+
+As rotas das **US-14**, **US-16**, **US-18** e **US-21** estão implementadas. US-18 persiste chamadas, expõe o snapshot e eventos SSE para o garçom e conclui chamadas por PATCH; o POST de chamada usa lock da mesa para retornar a pendência existente. A liberação cancela chamadas pendentes atomicamente. US-21 expõe extrato autenticado com itens de pedidos confirmados e preços do produto. Verifique os detalhes e a migration em [`docs/sprint-03.md`](sprint-03.md). Preserve os contratos finais existentes da Sprint 1/2.
+
+| US-18 | POST `/atendimentos/:idComanda/chamados` | Bearer da sessão vinculada | 201 `ChamadaDto`; chamada pendente existente da mesa é retornada sem duplicar. |
+| US-18 | GET `/garcom/chamados` | Sem login, rede interna | Snapshot das chamadas pendentes, ordenado por criação. |
+| US-18 | GET `/garcom/eventos` (SSE) | Sem login, rede interna | Eventos `chamados` com snapshot da fila; reconexão pode usar GET. |
+| US-18 | PATCH `/garcom/chamados/:idChamada/status` | Sem login, rede interna | `{status:"CONCLUIDA"}`; conflito se já concluída/cancelada. |
+| US-21 | GET `/atendimentos/:idComanda/extrato` | Bearer da sessão vinculada | Itens de pedidos confirmados, qualquer status, com quantidade, preço, subtotal e total em moeda. |

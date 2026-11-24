@@ -34,7 +34,35 @@ export function comandasRoutes(service: SprintService, config: AccessConfig, fee
     if (!result.replay && feed) {
       const setores = new Set(result.dto.itens.map(i => i.setor));
       for (const setor of setores) void feed.refresh(setor);
+      void feed.refreshComanda(idComanda);
     }
+  });
+  router.get('/:idComanda/pedidos', async (req, res) => {
+    const token = bearer(req);
+    const idComanda = idRota(req.params.idComanda);
+    res.json(await service.listarPedidosComanda(idComanda, token));
+  });
+  router.get('/:idComanda/extrato', async (req, res) => {
+    res.json(await service.extratoComanda(idRota(req.params.idComanda), bearer(req)));
+  });
+  router.post('/:idComanda/chamados', async (req, res) => {
+    res.status(201).json(await service.criarChamada(idRota(req.params.idComanda), bearer(req)));
+  });
+  router.get('/:idComanda/eventos', async (req, res) => {
+    const token = bearer(req);
+    const idComanda = idRota(req.params.idComanda);
+    await service.listarPedidosComanda(idComanda, token);
+    res.status(200).set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
+    res.flushHeaders();
+    res.write('retry: 3000\n: conectado\n\n');
+    const unsubscribe = feed ? feed.subscribeComanda(idComanda, token, pedidos => {
+      if (res.destroyed || res.writableEnded) return;
+      if (res.writableLength > 65536) { res.end(); return; }
+      res.write(pedidos === null ? 'event: indisponivel\ndata: {}\n\n' : 'event: pedidos\ndata: ' + JSON.stringify({ pedidos }) + '\n\n');
+    }) : () => {};
+    const heartbeat = setInterval(() => { if (!res.destroyed && !res.writableEnded) res.write(': heartbeat\n\n'); }, 15000);
+    heartbeat.unref();
+    res.on('close', () => { clearInterval(heartbeat); unsubscribe(); });
   });
   return router;
 }

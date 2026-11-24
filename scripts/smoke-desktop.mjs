@@ -47,7 +47,7 @@ app.whenReady().then(async () => {
         await installApiBridge(window, name, directory, url => url === entry.href);
         await window.loadFile(fileURLToPath(entry));
         await waitFor(window, '!!document.querySelector("button")');
-        assert.deepEqual(await evaluate(window, 'Object.keys(window.restaurante)'), ['request']);
+        assert.deepEqual(await evaluate(window, 'Object.keys(window.restaurante).sort()'), name === 'mesa' ? ['painel', 'request'] : ['request']);
         const health = await evaluate(window, 'window.restaurante.request({path: "/health", method: "GET"})');
         assert.equal(health.status, 200);
         if (name === 'recepcao') {
