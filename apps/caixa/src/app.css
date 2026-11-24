@@ -1,0 +1,31 @@
+@import '@restaurante/ui/botoes.css';
+:root { font-family: 'Segoe UI', system-ui, sans-serif; color: #211e1b; background: #f7f3ea; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, input, select { font: inherit; }
+.caixa-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; padding: 16px 28px; background: #24211f; color: white; }
+.caixa-brand { display: flex; align-items: center; gap: 10px; }
+.caixa-brand h1 { margin: 0; font-size: 22px; }
+.caixa-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: #f36b21; font-size: 12px; font-weight: 800; }
+.caixa-badge { border-radius: 999px; padding: 6px 12px; color: #245e8f; background: #eaf3fb; font-size: 12px; font-weight: 700; }
+.caixa-main { display: grid; gap: 18px; padding: 28px; max-width: 1600px; margin: auto; }
+.preview-notice { padding: 14px 18px; border: 1px solid #e4c887; border-radius: 12px; background: #fff4d8; }
+.preview-notice p { margin: 5px 0 0; font-size: 14px; }
+.caixa-tabs, .caixa-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.caixa-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; }
+.caixa-card { display: grid; gap: 12px; min-width: 0; padding: 18px; background: white; border-radius: 12px; box-shadow: 0 5px 18px #3b27100f; }
+.caixa-card h2 { margin: 0; font-size: 18px; }
+.caixa-card p { margin: 0; line-height: 1.5; color: #706a64; font-size: 14px; }
+.caixa-card button { justify-self: start; }
+.caixa-status { justify-self: start; padding: 6px 10px; border-radius: 999px; background: #fff4d8; color: #85500a; font-size: 13px; font-weight: 700; }
+.caixa-itens { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.caixa-itens li, .caixa-total { display: flex; justify-content: space-between; gap: 16px; }
+.caixa-itens strong { white-space: nowrap; }
+.caixa-total { padding-top: 12px; border-top: 1px solid #e6ded3; font-size: 18px; font-weight: 800; }
+.caixa-card label { display: block; margin-bottom: 6px; font-size: 14px; }
+.caixa-card input, .caixa-card select { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid #c9b8aa; border-radius: 8px; background: white; color: #211e1b; }
+.caixa-card fieldset { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid #e6ded3; border-radius: 8px; }
+.caixa-fields { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.caixa-card :focus-visible { outline: 3px solid #226392; outline-offset: 2px; }
+.preconta { max-width: 800px; width: 100%; justify-self: center; padding: 28px; }
+@media (max-width: 760px) { .caixa-main { padding: 16px; } .caixa-grid { grid-template-columns: 1fr; } .caixa-topbar { padding: 16px; } .caixa-fields { grid-template-columns: 1fr; } .preconta { padding: 18px; } }

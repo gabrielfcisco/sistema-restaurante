@@ -1,5 +1,9 @@
 # Banco — Sprint 01
 
+## Estado antes da Sprint 4
+
+Categorias e chamados da Sprint 3 já estão persistidos. `Produto.categoria` é FK textual para `Categoria`; `Produto.setor` já existe. `Comanda.status` inclui `CONTA_SOLICITADA`, `PAGA` e `FECHADA`; não existe entidade de pagamento ou pré-conta/taxas. `ItemPedido` não possui preço ou setor histórico. Planejamento em [sprint-04.md](sprint-04.md); nenhuma migration é criada ou aplicada nesta preparação. Manter as migrations existentes intactas e planejar persistência incremental ao implementar as histórias.
+
 US-12/13 acrescentam a migration aditiva `20261022000000_status_recebido`, preservando o histórico. Consulte [compatibilidade e execução](us-12-us-13.md). Aplicar somente após revisar o destino de desenvolvimento.
 
 MySQL 8 / Prisma. A migration inicial foi preservada. A nova `20261003000000_sprint01` acrescenta:

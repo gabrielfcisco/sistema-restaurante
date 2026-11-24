@@ -15,7 +15,7 @@
     "setup": "node scripts/setup.mjs",
     "setup:sprint": "node scripts/configure-sprint.mjs",
     "predev": "node scripts/check-dev.mjs",
-    "dev": "concurrently -k -n API,RECEPCAO,MESA,COZINHA,BAR,ADMIN,GARCOM \"npm:dev:api\" \"npm:dev:recepcao\" \"npm:dev:mesa\" \"npm:dev:cozinha\" \"npm:dev:bar\" \"npm:dev:administracao\" \"npm:dev:garcom\"",
+    "dev": "concurrently -k -n API,RECEPCAO,MESA,COZINHA,BAR,ADMIN,GARCOM,CAIXA \"npm:dev:api\" \"npm:dev:recepcao\" \"npm:dev:mesa\" \"npm:dev:cozinha\" \"npm:dev:bar\" \"npm:dev:administracao\" \"npm:dev:garcom\" \"npm:dev:caixa\"",
     "dev:api": "npm run dev -w @restaurante/api",
     "dev:recepcao": "npm run dev -w @restaurante/recepcao",
     "dev:mesa": "npm run dev -w @restaurante/mesa",
@@ -23,6 +23,7 @@
     "dev:bar": "npm run dev -w @restaurante/bar",
     "dev:administracao": "npm run dev -w @restaurante/administracao",
     "dev:garcom": "npm run dev -w @restaurante/garcom",
+    "dev:caixa": "npm run dev -w @restaurante/caixa",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint apps packages scripts tests --max-warnings=0",
@@ -42,7 +43,8 @@
     "package:cozinha": "npm run package -w @restaurante/cozinha",
     "package:bar": "npm run package -w @restaurante/bar",
     "package:administracao": "npm run package -w @restaurante/administracao",
-    "package:garcom": "npm run package -w @restaurante/garcom"
+    "package:garcom": "npm run package -w @restaurante/garcom",
+    "package:caixa": "npm run package -w @restaurante/caixa"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

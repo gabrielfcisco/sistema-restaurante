@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createApiClient } from '@restaurante/api-client';
 import type { CategoriaDto } from '@restaurante/contracts';
+import { ProdutosPreview } from './ProdutosPreview';
 
 const api = createApiClient(import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3333/api');
 const navigation = [
@@ -8,11 +9,12 @@ const navigation = [
   { label: 'Comandas', icon: '⌘', enabled: false },
   { label: 'Mesas', icon: '▦', enabled: false },
   { label: 'Categorias', icon: '▤', enabled: true },
-  { label: 'Produtos', icon: '⬡', enabled: false },
+  { label: 'Produtos', icon: '⬡', enabled: true },
   { label: 'Relatórios', icon: '▥', enabled: false }
 ];
 
 export function App() {
+  const [pagina, setPagina] = useState('Categorias');
   const [categories, setCategories] = useState<CategoriaDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -50,18 +52,19 @@ export function App() {
   return <div className="admin-app">
     <header className="admin-topbar">
       <div className="admin-brand"><span className="admin-mark" aria-hidden="true">M</span><h1>Administração</h1></div>
-      <span className="story-badge">US-19 · Categorias</span>
+      <span className="story-badge">{pagina === 'Categorias' ? 'US-19 · Categorias' : 'US-20/26 · Prévia'}</span>
     </header>
 
     <div className="admin-layout">
       <aside className="admin-sidebar" aria-label="Navegação da administração">
         <div className="sidebar-brand">mesa<span>.</span></div>
-        <nav>{navigation.map(item => item.enabled ? <a href="#categorias" className="nav-item active" key={item.label} aria-current="page"><span aria-hidden="true">{item.icon}</span>{item.label}</a>
+        <nav>{navigation.map(item => item.enabled ? <button className={'nav-item' + (pagina === item.label ? ' active' : '')} key={item.label} aria-current={pagina === item.label ? 'page' : undefined} onClick={() => setPagina(item.label)}><span aria-hidden="true">{item.icon}</span>{item.label}</button>
           : <button className="nav-item disabled" key={item.label} title="Fora do escopo visual desta entrega" onClick={unavailable}><span aria-hidden="true">{item.icon}</span>{item.label}</button>)}</nav>
         <p className="sidebar-footnote">Painel administrativo</p>
       </aside>
 
-      <main className="admin-main" id="categorias">
+      <main className="admin-main" id={pagina === 'Categorias' ? 'categorias' : 'produtos'}>
+        {pagina === 'Produtos' ? <ProdutosPreview categorias={categories} /> : <>
         <div className="page-heading"><div><p className="eyebrow">Cardápio</p><h2>Categorias</h2><p>Organize as categorias exibidas no cardápio do cliente.</p></div><button className="acao new-category" disabled={busy} onClick={() => { setConfirmar(null); setForm({ nome: '', ativo: true }); setMessage(''); }}><span aria-hidden="true">＋</span> Nova categoria</button></div>
         <button className="acao acao-secundaria" disabled={loading || busy} onClick={() => void carregar()}>Atualizar categorias</button>
         {loading && <p role="status">Carregando categorias…</p>}
@@ -92,6 +95,7 @@ export function App() {
         </section>
 
         <section className="category-guidance"><div className="guidance-icon" aria-hidden="true">i</div><div><h3>Sobre as categorias</h3><p>Inativar uma categoria oculta seus produtos no cardápio. Os produtos e pedidos já registrados são preservados.</p></div></section>
+        </>}
       </main>
     </div>
   </div>;

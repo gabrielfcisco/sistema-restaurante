@@ -1,5 +1,9 @@
 # Contratos da API — Sprint 01
 
+## Sprint 4 — preparação, sem novas rotas funcionais
+
+Critérios e contratos **propostos** das US-20/22/23/24/25/26 em [sprint-04.md](sprint-04.md). Esta preparação adiciona prévias de interface e instruções; não implementa cadastro de produtos, solicitação de conta, pré-conta, taxas ou pagamentos. Ao implementar cada história, registrar aqui seu contrato final e atualizar o estado no documento da Sprint 4. Não interpretar propostas como endpoints disponíveis.
+
 Regra atual de correção no preparo: cozinha e bar podem mover um item do próprio setor uma etapa por vez, nos dois sentidos: RECEBIDO ↔ EM_PREPARO ↔ PRONTO. Arrastar e os botões usam o mesmo PATCH com o status de origem. Voltar de PRONTO retira o item da fila do garçom; ENTREGUE permanece final. Esta regra prevalece sobre a descrição histórica abaixo.
 
 ## Contratos finais — US-15, US-17 e US-19
