@@ -80,3 +80,4 @@ button { cursor: pointer; }
 .product-preview p { color: #6d665f; line-height: 1.5; }
 .product-fields :focus-visible { outline: 3px solid #226392; outline-offset: 2px; }
 @media (max-width: 600px) { .product-fields { grid-template-columns: 1fr; } .product-preview { padding: 18px; } }
+.product-preview fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }

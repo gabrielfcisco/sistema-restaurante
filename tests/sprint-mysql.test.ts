@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import mariadb from 'mariadb';
 import { parse } from 'dotenv';
@@ -29,6 +29,10 @@ test('MySQL: migrations, vínculos, concorrência, rollback, histórico e sessõ
     await connection.query(await readFile('apps/api/prisma/migrations/20261003010000_cliente_telefone/migration.sql', 'utf8'));
     await connection.query(await readFile('apps/api/prisma/migrations/20261006000000_dispositivo_mesa/migration.sql', 'utf8'));
     await connection.query(await readFile('apps/api/prisma/migrations/20261103000000_us18_chamadas/migration.sql', 'utf8'));
+    const aplicadas = new Set(['20260903223000_initial_schema', '20261003000000_sprint01', '20261003010000_cliente_telefone', '20261006000000_dispositivo_mesa', '20261103000000_us18_chamadas']);
+    for (const migration of (await readdir('apps/api/prisma/migrations', { withFileTypes: true })).filter(d => d.isDirectory() && !aplicadas.has(d.name)).map(d => d.name).sort()) {
+      await connection.query(await readFile(`apps/api/prisma/migrations/${migration}/migration.sql`, 'utf8'));
+    }
     url.pathname = `/${database}`;
     prisma = new PrismaClient({ adapter: new PrismaMariaDb(mysqlTestConfig(url, true)) });
     const db = prisma;

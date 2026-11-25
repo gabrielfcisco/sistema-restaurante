@@ -44,7 +44,8 @@
     "package:bar": "npm run package -w @restaurante/bar",
     "package:administracao": "npm run package -w @restaurante/administracao",
     "package:garcom": "npm run package -w @restaurante/garcom",
-    "package:caixa": "npm run package -w @restaurante/caixa"
+    "package:caixa": "npm run package -w @restaurante/caixa",
+    "test:sprint4:desktop": "node scripts/test-sprint4-desktop.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

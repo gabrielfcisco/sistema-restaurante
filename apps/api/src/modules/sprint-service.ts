@@ -267,6 +267,9 @@ export class PrismaSprintService implements SprintService {
       for (const categoria of [...new Set(referencias.map(p => p.categoria))].sort()) {
         await tx.$queryRaw`SELECT id_categoria FROM categoria WHERE id_categoria = ${categoria} FOR UPDATE`;
       }
+      for (const idProduto of idsUnicos.sort((a, b) => a - b)) {
+        await tx.$queryRaw`SELECT id_produto FROM produto WHERE id_produto = ${idProduto} FOR UPDATE`;
+      }
       const produtos = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } }, include: { grupo: true } });
       const mapaProdutos = new Map(produtos.map(p => [p.idProduto, p]));
       for (const item of normalizedItens) {

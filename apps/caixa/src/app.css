@@ -29,3 +29,7 @@ button, input, select { font: inherit; }
 .caixa-card :focus-visible { outline: 3px solid #226392; outline-offset: 2px; }
 .preconta { max-width: 800px; width: 100%; justify-self: center; padding: 28px; }
 @media (max-width: 760px) { .caixa-main { padding: 16px; } .caixa-grid { grid-template-columns: 1fr; } .caixa-topbar { padding: 16px; } .caixa-fields { grid-template-columns: 1fr; } .preconta { padding: 18px; } }
+.caixa-itens small { display: block; color: #706a64; margin-top: 4px; }
+.caixa-card input[type=checkbox] { width: auto; min-height: auto; }
+.caixa-card h3 { margin: 0; }
+@media print { .caixa-topbar, .caixa-main > :not(.preconta), .preconta button, .preconta .caixa-card, .preconta .caixa-actions { display: none !important; } body { background: white; } .caixa-main, .preconta { padding: 0; max-width: none; box-shadow: none; } }

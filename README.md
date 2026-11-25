@@ -1,6 +1,6 @@
 # Sistema de restaurante — Grupo 9
 
-**Sprint 4 em preparação** na branch `sprint-04`: US-20/22/23/24/25/26, total de 50 pontos. Leia [histórias, divisão do trabalho e decisões confirmadas](docs/sprint-04.md) antes de solicitar uma história à IA. A base funcional continua sendo a Sprint 3; os contratos da Sprint 4 ainda são propostas.
+**Sprint 4 implementada:** US-20/22/23/24/25/26 (50 pontos), com produtos/setor, fechamento, caixa, pré-conta, taxas, pagamentos e liberação da mesa. Consulte [contratos, migration e execução](docs/sprint-04.md#entrega-funcional--25112026).
 
 **Sprint 3 integrada.** Cozinha e bar avançam o preparo até PRONTO. O garçom recebe chamados e retirada, confirma a entrega e consulta o consumo por mesa/comanda. O cliente acompanha os pedidos, chama o garçom e consulta o extrato da própria comanda. A administração gerencia categorias persistidas.
 
@@ -42,7 +42,7 @@ npm run dev:caixa
 
 Garçom roda em uma janela Electron com proporções de celular e também pode ser aberto pelo navegador do telefone na rede local usando o endereço `Network` exibido pelo Vite. Administração também roda em Electron.
 
-Caixa usa a porta 5179 e abre uma prévia visual, sem backend de pagamento. `npm run dev` também o inicia. Após atualizar a branch, execute `npm ci` para reconhecer o workspace novo. Para API em outro host, configure `VITE_API_URL` no ambiente do caixa (exemplo em `apps/caixa/.env.example`). Acrescente `http://localhost:5179` às origens de desenvolvimento em `CORS_ORIGINS` quando integrar a API; o exemplo foi atualizado, arquivos `.env` existentes não são sobrescritos.
+Caixa usa a porta 5179 e integra contas, pré-contas e pagamentos à API comum. `npm run dev` também o inicia. Após atualizar a branch, execute `npm ci` para reconhecer o workspace novo. Para API em outro host, configure `VITE_API_URL` no ambiente do caixa (exemplo em `apps/caixa/.env.example`). Acrescente `http://localhost:5179` às origens de desenvolvimento em `CORS_ORIGINS` para consumir a API; o exemplo foi atualizado, arquivos `.env` existentes não são sobrescritos.
 
 ## API da sprint 1
 
@@ -75,7 +75,7 @@ npm run db:seed
 | `npm run package:cozinha` | Gera pasta executável desktop da cozinha |
 | `npm run package:bar` | Gera pasta executável desktop do bar |
 | `npm run package:administracao` | Gera pasta executável desktop da administração |
-| `npm run package:caixa` | Gera pasta executável desktop da prévia do caixa |
+| `npm run package:caixa` | Gera pasta executável desktop do caixa |
 | `npm run db:generate` | Gera cliente Prisma após mudança de schema |
 | `npm run db:migrate` | Cria/aplica migration em banco de desenvolvimento |
 | `npm run db:studio` | Abre inspeção local do banco |
@@ -85,7 +85,7 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 ## Organização e continuidade
 
 - [Arquitetura e expansão](docs/arquitetura.md)
-- [Sprint 4: histórias e preparação para os integrantes](docs/sprint-04.md)
+- [Sprint 4: histórias, implementação e execução](docs/sprint-04.md)
 - [US-12 e US-13: cozinha e bar](docs/us-12-us-13.md)
 - [Sprint 3: preparação das US-14 a US-19 e US-21](docs/sprint-03.md)
 - [Interfaces, configuração desktop e demonstração da sprint](docs/interfaces.md)
@@ -96,4 +96,4 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 
 `apps/api` contém o backend único. Os aplicativos compartilham contratos, cliente HTTP e componentes operacionais. O legado em `legacy/nextjs` não é executado.
 
-O caixa está preparado como prévia Electron (porta 5179), sem consultar ou registrar pagamentos. A administração inclui prévia de Produtos, preservando Categorias. Estrutura e critérios em `docs/sprint-04.md`. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.
+Caixa e produtos estão funcionais. Antes de executar, gere o cliente Prisma e aplique `20261125000000_fechamento_pagamento` somente em banco conhecido de desenvolvimento. Banco compartilhado do grupo não foi migrado nesta entrega.

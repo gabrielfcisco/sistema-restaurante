@@ -1,8 +1,8 @@
 # Contratos da API — Sprint 01
 
-## Sprint 4 — preparação, sem novas rotas funcionais
+## Sprint 4 — contratos implementados
 
-Critérios e contratos **propostos** das US-20/22/23/24/25/26 em [sprint-04.md](sprint-04.md). Esta preparação adiciona prévias de interface e instruções; não implementa cadastro de produtos, solicitação de conta, pré-conta, taxas ou pagamentos. Ao implementar cada história, registrar aqui seu contrato final e atualizar o estado no documento da Sprint 4. Não interpretar propostas como endpoints disponíveis.
+US-20/22/23/24/25/26 estão implementadas. Contratos finais, códigos de conflito, versões da pré-conta, taxas, SSE, confirmação de recebimento e migration estão em [Sprint 4 — entrega funcional](sprint-04.md#entrega-funcional--25112026). A tabela de contratos finais desse documento é a referência destas rotas. Caixa/administração/garçom são exclusivos da rede interna; fechamento da mesa exige sua própria sessão. Pagamento finaliza somente uma comanda e libera mesa só após a última ativa. Nenhum valor/total enviado na chamada de pagamento é aceito.
 
 Regra atual de correção no preparo: cozinha e bar podem mover um item do próprio setor uma etapa por vez, nos dois sentidos: RECEBIDO ↔ EM_PREPARO ↔ PRONTO. Arrastar e os botões usam o mesmo PATCH com o status de origem. Voltar de PRONTO retira o item da fila do garçom; ENTREGUE permanece final. Esta regra prevalece sobre a descrição histórica abaixo.
 
