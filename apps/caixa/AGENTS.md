@@ -1,5 +1,7 @@
 # Caixa — preparação da Sprint 4
 
+**Estado em 25/11/2026:** US-20/22/23/24/25/26 implementadas. O estado e contratos finais ao fim de `docs/sprint-04.md` (na raiz) prevalecem sobre as notas históricas de preparação abaixo. Preservar as regras e restrições de escopo.
+
 Leia `../../AGENTS.md`, `../../docs/sprint-04.md` e `../../docs/figma-sprint-04.md`. App Electron/Vite separado, porta 5179, sem login e exclusivamente na rede interna, conforme decisão do responsável. API comum; nunca criar backend próprio. `src/App.tsx` é uma prévia local, com dados explicitamente ilustrativos e sem persistência. Implementar US-23/24 somente quando solicitadas; US-25 integra a mesma transação de pagamento.
 
 Cliente solicita a conta e informa uma forma de pagamento. Caixa prepara a pré-conta, escolhe taxas opcionais e chama o garçom, que recebe na mesa. A orientação de preparação é o caixa confirmar a quitação após retorno do garçom. Gerar/imprimir pré-conta e chamar garçom não significam pagamento. Não emitir documento fiscal nem integrar banco/adquirente. Formas: dinheiro, Pix, débito e crédito; pagamento integral, uma forma por comanda.

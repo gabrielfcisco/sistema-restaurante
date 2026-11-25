@@ -1,6 +1,8 @@
 
 import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, PedidosComandaEventoDto, ChamadaDto, ExtratoComandaDto } from '@restaurante/contracts';
 import type { CategoriaDto, AlterarCategoriaInput, MesaGarcomDto, ComandaGarcomDto } from '@restaurante/contracts';
+import type { AvisosContasDto, ContaResumoDto, ContaCaixaDto, CobrancaDto, CriarProdutoInput, ProdutoGestaoDto, FechamentoDto, FormaPagamento, PagamentoDto, PrecontaDto, TaxaInput } from '@restaurante/contracts';
+export { acompanharContas } from './contas';
 export interface ApiRequest { path: string; method: string; body?: unknown; sessionToken?: string; idempotencyKey?: string }
 export interface ApiResult { status: number; data?: unknown }
 export type ApiTransport = (request: ApiRequest) => Promise<ApiResult>;
@@ -34,6 +36,18 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     return result.data as T;
   }
   return {
+    produtosGestao: () => request<ProdutoGestaoDto[]>('/administracao/produtos'),
+    criarProduto: (input: CriarProdutoInput) => request<ProdutoGestaoDto>('/administracao/produtos', 'POST', input),
+    alterarSetor: (id: number, setor: SetorOperacional) => request<ProdutoGestaoDto>('/administracao/produtos/' + id + '/setor', 'PATCH', { setor }),
+    fechamento: (id: number, token: string) => request<FechamentoDto>('/atendimentos/' + id + '/fechamento', 'GET', undefined, token),
+    solicitarFechamento: (id: number, token: string, formaPagamento: FormaPagamento) => request<FechamentoDto>('/atendimentos/' + id + '/solicitar-fechamento', 'POST', { formaPagamento }, token),
+    contasCaixa: () => request<ContaResumoDto[]>('/caixa/comandas'),
+    contaCaixa: (id: number) => request<ContaCaixaDto>('/caixa/comandas/' + id),
+    emitirPreconta: (id: number, taxas: TaxaInput[]) => request<PrecontaDto>('/caixa/comandas/' + id + '/preconta', 'POST', { taxas }),
+    chamarCobranca: (id: number, idPreconta: number) => request<CobrancaDto>('/caixa/comandas/' + id + '/chamar-garcom', 'POST', { idPreconta }),
+    pagar: (id: number, idPreconta: number) => request<PagamentoDto>('/caixa/comandas/' + id + '/pagamento', 'POST', { idPreconta }),
+    avisosContas: () => request<AvisosContasDto>('/garcom/contas'),
+    concluirCobranca: (id: number) => request<{ idCobranca: number }>('/garcom/cobrancas/' + id + '/status', 'PATCH', { status: 'CONCLUIDA' }),
     categorias: () => request<CategoriaDto[]>('/administracao/categorias'),
     criarCategoria: (nome: string) => request<CategoriaDto>('/administracao/categorias', 'POST', { nome }),
     alterarCategoria: (id: string, input: AlterarCategoriaInput) => request<CategoriaDto>('/administracao/categorias/' + encodeURIComponent(id), 'PATCH', input),

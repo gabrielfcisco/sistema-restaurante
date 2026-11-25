@@ -1,5 +1,7 @@
 # API comum — Grupo 9
 
+**Estado em 25/11/2026:** US-20/22/23/24/25/26 implementadas. O estado e contratos finais ao fim de `docs/sprint-04.md` (na raiz) prevalecem sobre as notas históricas de preparação abaixo. Preservar as regras e restrições de escopo.
+
 Leia `AGENTS.md` da raiz, `docs/arquitetura.md`, `docs/banco.md`, `docs/contratos-api.md` e `docs/sprint-04.md`. Sprint 3 está integrada; suas propostas históricas não indicam funcionalidades pendentes. Rotas ficam nos módulos e são montadas por `sprint-routes.ts` e `app.ts`. Preservar `Cache-Control: no-store`, validação, erros e contratos reais.
 
 - Garçom/administração/cozinha/bar/caixa sem login, somente em rede interna, conforme decisões confirmadas. CORS não restringe a rede por si só.

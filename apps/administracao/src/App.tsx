@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createApiClient } from '@restaurante/api-client';
 import type { CategoriaDto } from '@restaurante/contracts';
-import { ProdutosPreview } from './ProdutosPreview';
+import { Produtos } from './Produtos';
 
 const api = createApiClient(import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3333/api');
 const navigation = [
@@ -52,7 +52,7 @@ export function App() {
   return <div className="admin-app">
     <header className="admin-topbar">
       <div className="admin-brand"><span className="admin-mark" aria-hidden="true">M</span><h1>Administração</h1></div>
-      <span className="story-badge">{pagina === 'Categorias' ? 'US-19 · Categorias' : 'US-20/26 · Prévia'}</span>
+      <span className="story-badge">{pagina === 'Categorias' ? 'US-19 · Categorias' : 'US-20/26 · Produtos'}</span>
     </header>
 
     <div className="admin-layout">
@@ -64,7 +64,7 @@ export function App() {
       </aside>
 
       <main className="admin-main" id={pagina === 'Categorias' ? 'categorias' : 'produtos'}>
-        {pagina === 'Produtos' ? <ProdutosPreview categorias={categories} /> : <>
+        {pagina === 'Produtos' ? <Produtos categorias={categories} /> : <>
         <div className="page-heading"><div><p className="eyebrow">Cardápio</p><h2>Categorias</h2><p>Organize as categorias exibidas no cardápio do cliente.</p></div><button className="acao new-category" disabled={busy} onClick={() => { setConfirmar(null); setForm({ nome: '', ativo: true }); setMessage(''); }}><span aria-hidden="true">＋</span> Nova categoria</button></div>
         <button className="acao acao-secundaria" disabled={loading || busy} onClick={() => void carregar()}>Atualizar categorias</button>
         {loading && <p role="status">Carregando categorias…</p>}

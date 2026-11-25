@@ -1,8 +1,8 @@
 # Sprint 4 — US-20, US-22, US-23, US-24, US-25 e US-26
 
-## Escopo e estado
+## Escopo e estado — implementado em 25/11/2026
 
-Escopo negociado pelo Grupo 9: **50 pontos**. Branch de integração: `sprint-04`, criada a partir da `main` com a Sprint 3 integrada (PR #6). Esta entrega prepara instruções, contratos propostos e estrutura; não implementa as histórias. Uma solicitação explícita de uma história autoriza sua implementação, respeitadas as decisões registradas abaixo.
+Escopo negociado pelo Grupo 9: **50 pontos**. Branch de integração: `sprint-04`, criada a partir da `main` com a Sprint 3 integrada (PR #6). As seis histórias estão implementadas na branch `codex/sprint-04-completa`, criada a partir de `sprint-04` (`182dcf0`). Critérios e decisões abaixo foram preservados. As seções de preparação descrevem a base histórica; o contrato final e as verificações desta entrega estão ao final.
 
 Fonte dos cartões: `cartoes_UNICA_PLANILHA_DUPLEX.xlsx`, disponível fora do monorepo no ambiente de preparação. O conteúdo necessário está transcrito abaixo para que um clone seja autocontido. Frentes: H214:H224, H251:H261, A264:A274, H264:H274, A301:A311 e H301:H311; versos: A239:A249, A276:A286, H289:H299, A289:A299, H326:H336 e A326:A336. Critérios não devem ser deduzidos da numeração.
 
@@ -86,7 +86,7 @@ O administrador cadastra nome, descrição, preço, categoria, setor responsáve
 
 Tarefas técnicas do cartão: implementar tela conforme protótipo do Figma; conectar formulário aos campos existentes do banco; criar/ajustar endpoint de cadastro de item; validar preço, categoria, setor e disponibilidade; testar persistência e exibição do item ativo no cardápio.
 
-## Base existente conferida no código
+## Base histórica conferida antes da implementação
 
 - `apps/{recepcao,mesa,cozinha,bar,garcom,administracao}` já existiam. Reutilizar esses workspaces; não criar cópias. Nesta preparação, `apps/caixa` foi criado com prévia Electron e a navegação Produtos da administração abre um formulário de prévia; categorias continuam funcionais.
 - `Produto` já possui nome, descrição opcional, preço Decimal(10,2), categoria como FK textual, setor `COZINHA | BAR` e `ativo`. `Categoria` já é uma entidade persistida, não um enum.
@@ -112,9 +112,9 @@ Tarefas técnicas do cartão: implementar tela conforme protótipo do Figma; con
 
 Preparar contratos compartilhados antes de desenvolver consumidores. Cada integrante implementa a história solicitada, incluindo API, DTOs, cliente e testes necessários; não devolver tela com sucesso fictício. US-20/26 devem compartilhar a mesma área de produtos. US-24/25 devem compartilhar a mesma transação de pagamento, não serviços concorrentes que finalizam a mesma comanda separadamente.
 
-## Contratos propostos — ainda não implementados
+## Contratos da Sprint 4 — implementados
 
-Prefixo `/api`. Nomes abaixo são propostas de integração; inspecionar rotas existentes antes de fixá-los. DTOs ficam em `packages/contracts`; chamadas em `packages/api-client`. Nenhum frontend acessa Prisma. O fluxo funcional confirmado não autoriza inventar comportamento adicional além destes critérios.
+Prefixo `/api`. As rotas abaixo estão implementadas, com complementos no contrato final ao fim deste documento. DTOs ficam em `packages/contracts`; chamadas em `packages/api-client`. Nenhum frontend acessa Prisma. O fluxo funcional confirmado não autoriza inventar comportamento adicional além destes critérios.
 
 | História | Método/rota proposta | Entrada e resultado |
 |---|---|---|
@@ -161,7 +161,7 @@ O responsável autorizou adaptar formulários de produtos, taxas e pré-conta ao
 - US-26: campos obrigatórios, limites do schema, preço válido, categoria existente, setor válido, produto inativo invisível e categoria inativa ocultando produto. Não adicionar upload ou CRUD completo da US-27 por conveniência.
 - Depois de implementação, executar `npm run check` e testes MySQL em banco descartável; registrar limitações ambientais separadamente. Não aplicar migrations no banco de operação como parte da preparação.
 
-## Estrutura entregue e referências
+## Estrutura histórica da preparação e referências
 
 - `apps/caixa`: workspace Electron/Vite, porta 5179; prévia navegável de consulta, taxas e pré-conta. Scripts `dev:caixa` e `package:caixa` na raiz; incluído no `dev` geral. API continua separada na porta 3333.
 - `apps/administracao/src/ProdutosPreview.tsx`: estrutura do formulário compartilhado US-20/26, acessível pela navegação Produtos. Não grava e não altera a gestão de categorias existente.
@@ -169,7 +169,7 @@ O responsável autorizou adaptar formulários de produtos, taxas e pré-conta ao
 - `docs/figma-sprint-04.md`: links/nós verificados, capturas reais versionadas e limites das adaptações. Mesa/garçom existentes serão integrados na implementação das histórias, sem ativar fechamento prematuramente.
 - `AGENTS.md`, instruções locais e `.agents/agents/api-sprint4.md`: contexto autocontido para as IAs do grupo. `CLAUDE.md` já referencia `AGENTS.md` e não precisa duplicá-lo.
 
-Não foram criadas migrations nem aplicadas mudanças de banco nesta preparação. Contratos HTTP e persistência acima são propostas para implementação. Decisões de negócio confirmadas não precisam ser perguntadas novamente; pergunte se surgir comportamento novo ou conflito real. Não implementar estorno, edição de preços ou relatórios sem novo escopo.
+Na preparação de 23/11 não foram criadas migrations. A implementação de 25/11 acrescenta a migration descrita abaixo; os contratos HTTP acima agora são funcionais. Decisões de negócio confirmadas não precisam ser perguntadas novamente; pergunte se surgir comportamento novo ou conflito real. Não implementar estorno, edição de preços ou relatórios sem novo escopo.
 
 ## Verificação da preparação — 23/11/2026
 
@@ -183,3 +183,56 @@ Não foram criadas migrations nem aplicadas mudanças de banco nesta preparaçã
 Exemplo: "Implemente a US-22 da Sprint 4. Leia AGENTS.md, docs/sprint-04.md e as instruções dos módulos afetados. Confira código e referências visuais, preserve contratos existentes e pergunte sobre decisões pendentes que afetem esta história. Atualize documentação de contratos e estado e execute as verificações pertinentes."
 
 Antes de começar, atualizar a branch de trabalho com a integração `sprint-04` conforme o fluxo Git do grupo. Ao concluir uma história, registrar o estado real, contratos finais, migrations e verificações neste documento; substituir a proposta correspondente, sem deixar afirmações contraditórias de implementação/prévia.
+
+
+## Entrega funcional — 25/11/2026
+
+- **US-20/26:** cadastro real e lista administrativa (inclusive inativos), categoria existente, preço/descrição/disponibilidade validados, alteração exclusiva de setor. Pedido confirmado bloqueia produtos por ID ordenado; alteração de setor usa o mesmo lock e rejeita itens não entregues em atendimentos ativos. Nenhuma edição de preços ou upload foi acrescentada.
+- **US-22:** confirmação real com forma de pagamento, aviso de carrinho não enviado, descarte local somente após sucesso, bloqueio de novos pedidos sob lock da mesa. Consulta periódica recupera fechamento após troca de sessão/dispositivo; extrato e acompanhamento permanecem acessíveis até quitação. Reenvio com mesma forma retorna o mesmo fechamento; forma diferente retorna 409.
+- **US-23:** caixa lista apenas `CONTA_SOLICITADA` e revalida o detalhe a cada dois segundos; consumo é calculado pela API, sem CPF/telefone. Estado vazio/indisponível e conflito não simulam contas.
+- **US-24:** pré-conta persistida e versionada, taxas opcionais e nenhuma por padrão, emissão separada da quitação, aviso recuperável ao garçom. Uma taxa percentual aceita de 0 a 100%, duas casas decimais, até 20 taxas; valor fixo/preço/total de até R$ 99.999.999,99. Cada percentual usa o subtotal e arredondamento decimal meio para cima por linha. O servidor rejeita valor/total informado na chamada de pagamento.
+- **US-25:** pagamento único por comanda, status `PAGA` e data, revogação somente de suas sessões e remoção de seu vínculo de cartão, na mesma transação. Mesa liberada e chamados genéricos cancelados apenas quando não houver outra comanda ativa. Não usa liberação manual e preserva histórico.
+
+### Contratos finais complementares
+
+Todos usam `/api`; formato de erros já existente, sem cache. Administração/caixa/garçom permanecem exclusivos da rede interna, sem login por decisão do grupo. Mesa exige Bearer da própria sessão.
+
+| Método e rota | Contrato |
+|---|---|
+| GET `/administracao/produtos` | `ProdutoGestaoDto[]`, inclui disponibilidade própria e estado/nome da categoria. |
+| POST `/administracao/produtos` | `{nome,descricao?,preco,categoria,setor,ativo}` → 201 produto persistido. Preço em reais, número com até duas casas. |
+| PATCH `/administracao/produtos/:idProduto/setor` | Somente `{setor}`. 409 `SETOR_EM_USO` se houver itens pendentes ativos. |
+| GET `/atendimentos/:idComanda/fechamento` | Sessão vinculada → `{idComanda,status,formaPagamento,solicitadoEm}`. |
+| POST `/atendimentos/:idComanda/solicitar-fechamento` | Somente `{formaPagamento: "DINHEIRO" | "PIX" | "DEBITO" | "CREDITO"}`; idempotente para mesma forma. |
+| GET `/caixa/comandas` | Contas aguardando pagamento: ID, mesa, nome, forma e horário. |
+| GET `/caixa/comandas/:idComanda` | Itens/valores/subtotal, `todosEntregues` e última `preconta`. Aberta/paga/fechada retorna 409. |
+| GET `/caixa/eventos` | SSE `contas` com snapshot completo da lista; reconciliação a cada 2s, retry 3s, heartbeat 15s, `indisponivel` em falha. |
+| POST `/caixa/comandas/:idComanda/preconta` | Somente `{taxas:[{nome,tipo:"PERCENTUAL"|"FIXA",valor}]}` → 201 `PrecontaDto` imutável. Cada emissão cria versão. Bloqueada enquanto uma cobrança anterior estiver pendente. |
+| GET `/caixa/precontas/:idPreconta` | Documento preservado da versão emitida, inclusive após pagamento, para conferência/impressão. |
+| POST `/caixa/comandas/:idComanda/chamar-garcom` | Somente `{idPreconta}` vigente; um aviso por versão, reenvio não duplica. |
+| GET `/garcom/contas` e GET `/garcom/contas/eventos` | Snapshot `{solicitacoes,cobrancas}` sem nome/CPF/telefone do cliente; SSE `contas`, mesmas regras de reconexão. Fechamento é por comanda; não substitui chamada genérica por mesa. |
+| PATCH `/garcom/cobrancas/:idCobranca/status` | `{status:"CONCLUIDA"}` registra retorno ao caixa; nunca quita. Repetição não duplica ação. |
+| POST `/caixa/comandas/:idComanda/pagamento` | Somente `{idPreconta}` conferida. API calcula valor da versão, exige consumo atual correspondente e todos os itens entregues, registra e finaliza atomicamente. Retorna `PagamentoDto` e `mesaLiberada`. |
+
+Conflitos: `PAGAMENTO_DUPLICADO`, `ITENS_PENDENTES`, `PRECONTA_DESATUALIZADA`, `COBRANCA_PENDENTE`, `CONTA_INDISPONIVEL` e `FECHAMENTO_JA_SOLICITADO` retornam 409. Uma versão antiga ou cujo consumo/preço foi alterado não pode ser cobrada. O botão do caixa exige confirmação explícita do recebimento integral; concluir aviso do garçom não prova quitação. Liberação manual legada continua distinta de pagamento e pode encerrar atendimentos sem registro financeiro; não foi alterada incidentalmente.
+
+### Banco e execução
+
+Migration incremental `20261125000000_fechamento_pagamento`: forma/horário de solicitação em Comanda, `preconta` com snapshot JSON, `cobranca` única por versão, `pagamento` único por comanda e pré-conta, com valor/forma/data. Registros antigos não recebem pagamento fictício; não houve aplicação no banco do grupo. Todas as migrations anteriores foram preservadas.
+
+Após conferir que `DATABASE_URL` aponta para o banco de desenvolvimento correto: `npm ci`, `npm run db:generate`, `npm run db:deploy`. Executar `dev:api`, `dev:mesa`, `dev:administracao`, `dev:garcom`, `dev:caixa` e recepção conforme necessário. A API continua única.
+
+Caixa Electron usa `RESTAURANTE_CAIXA_API_URL` (ou `VITE_API_URL`) no processo, padrão `http://127.0.0.1:3333/api`, com HTTP somente local/IPv4 privada ou HTTPS. O preload expõe somente a URL pública e a ação restrita de documento. Impressão/PDF lê uma pré-conta persistida da API configurada, escapa texto e renderiza em janela oculta isolada. O renderer não envia HTML, caminho de arquivo ou URL arbitrária. PDF usa diálogo nativo de destino. No navegador, impressão permite escolher Salvar como PDF. Sem emissão fiscal.
+
+### Verificações reproduzíveis
+
+- `RUN_MYSQL_TESTS=1` e `TEST_DATABASE_URL` local habilitam todas as suítes em bancos aleatórios descartáveis; não migram o banco indicado na URL.
+- `npm run check`: lint, tipos, testes HTTP/financeiros/integração, builds e validação Prisma.
+- `npm run test:sprint4:desktop` após build, com `TEST_DATABASE_URL`: apps Electron ocultos, cadastro real, aviso do carrinho, fechamento, taxas, pré-conta/PDF, recebimento pelo garçom, pagamento, liberação e revogação. `DESKTOP_SCREENSHOT_DIR` opcional preserva evidências locais.
+- Cobertura adicional de banco: versões obsoletas, isolamento, duplicidade concorrente, rollback induzido após inserção do pagamento, quitação simultânea das últimas comandas, fechamento versus pedido e setor versus confirmação.
+
+Fora do escopo: estorno, cancelamento/reabertura da conta, parcelamento, múltiplas formas, descontos, US-27/28/29, upload, documento fiscal e integração bancária.
+
+### Resultado da validação desta entrega
+
+`npm run check` aprovado em Node 24, com **42 testes aprovados e nenhum ignorado**, incluindo todas as suítes MySQL opt-in em MariaDB local descartável. Lint, tipos, builds de todos os apps e schema Prisma aprovados. `npm run test:sprint4:desktop` aprovado: pagamento real de R$ 110,89 persistido após pré-conta com consumo R$ 99,80, serviço de 10% e taxa fixa R$ 1,11. Capturas de produtos, mesa, garçom e caixa conferidas; PDF de uma página renderizado e acentos/valores inspecionados. Layout sem overflow horizontal em desktop e caixa com largura 760. Nenhum dado do banco do grupo foi alterado.

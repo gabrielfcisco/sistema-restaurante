@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { createApiClient } from '@restaurante/api-client';
+import { acompanharContas, createApiClient } from '@restaurante/api-client';
 import { criarClienteOperacional } from '@restaurante/api-client/operacao';
-import type { ChamadaDto, ComandaGarcomDto, ItemFilaDto, MesaGarcomDto } from '@restaurante/contracts';
+import { FORMAS_PAGAMENTO, type AvisosContasDto, type ChamadaDto, type ComandaGarcomDto, type ItemFilaDto, type MesaGarcomDto } from '@restaurante/contracts';
 
 const base = import.meta.env.VITE_API_URL ?? (window.location.protocol === 'file:' ? 'http://127.0.0.1:3333/api' : window.location.protocol + '//' + window.location.hostname + ':3333/api');
 const api = createApiClient(base);
@@ -12,6 +12,16 @@ const status = { RECEBIDO: 'Recebido', EM_PREPARO: 'Em preparo', PRONTO: 'Pronto
 export function App() {
   const [itens, setItens] = useState<ItemFilaDto[]>([]);
   const [conexao, setConexao] = useState('conectando');
+  const [contas, setContas] = useState<AvisosContasDto | null>(null), [contasOnline, setContasOnline] = useState(false);
+  const [cobrando, setCobrando] = useState<number | null>(null);
+  const cobrancaLock = useRef(false);
+  useEffect(() => acompanharContas<AvisosContasDto>(base, '/garcom/contas/eventos', setContas, setContasOnline), []);
+  async function concluirCobranca(id: number) {
+    if (cobrancaLock.current) return; cobrancaLock.current = true; setCobrando(id); setAviso('');
+    try { await api.concluirCobranca(id); setContas(c => c ? { ...c, cobrancas: c.cobrancas.filter(r => r.idCobranca !== id) } : c); setAviso('Retorno informado. A quitação deve ser confirmada pelo caixa.'); }
+    catch (e) { setAviso(e instanceof Error ? e.message : 'Não foi possível concluir.'); }
+    finally { cobrancaLock.current = false; setCobrando(null); }
+  }
   const [chamados, setChamados] = useState<ChamadaDto[] | null>(null);
   const [concluindo, setConcluindo] = useState<number | null>(null);
   async function concluir(id: number) {
@@ -72,6 +82,11 @@ export function App() {
       <p role="status">{conexao === 'conectado' ? 'Retirada atualizada' : conexao === 'conectando' ? 'Carregando retirada…' : 'Reconectando…'}</p>
       {erroFila && <p role="alert" className="action-notice">{erroFila}</p>}
       {aviso && <p role="status" className="action-notice">{aviso}</p>}
+      <section className="waiter-section"><h2>Contas e recebimentos</h2>{!contasOnline && <p role="status">Atualizando avisos de conta…</p>}
+        {contasOnline && contas?.solicitacoes.length === 0 && <p className="empty-card">Nenhuma conta solicitada.</p>}
+        {contas?.solicitacoes.map(c => <article className="waiter-card" key={c.idComanda}><h3>Mesa {c.numeroMesa} · Comanda #{c.idComanda}</h3><p>Conta solicitada · {c.formaPagamento ? FORMAS_PAGAMENTO[c.formaPagamento] : 'Forma não informada'}</p><p>Aguardando conferência do caixa.</p></article>)}
+        {contas?.cobrancas.map(c => <article className="waiter-card" key={c.idCobranca}><h3>Levar pré-conta #{c.idPreconta}</h3><p>Mesa {c.numeroMesa} · Comanda #{c.idComanda}</p><p>Leve a pré-conta e receba na mesa. Informe o retorno ao caixa; esta ação não registra pagamento.</p><button className="acao primary-button" disabled={!contasOnline || cobrando !== null} onClick={() => void concluirCobranca(c.idCobranca)}>Informar retorno ao caixa</button></article>)}
+      </section>
       <section className="waiter-section"><h2>Chamados</h2>
         {chamados === null ? <p role="status">Aguardando atualização dos chamados…</p> : chamados.length === 0 ? <p className="empty-card">Nenhuma mesa chamando no momento.</p> :
           chamados.map(c => <article className="waiter-card" key={c.idChamada}><h3>Mesa {c.numeroMesa}</h3><p>Solicitou atendimento às {new Date(c.criadaEm).toLocaleTimeString('pt-BR')}</p><button className="acao primary-button" disabled={concluindo !== null} onClick={() => void concluir(c.idChamada)}>Concluir atendimento</button></article>)}

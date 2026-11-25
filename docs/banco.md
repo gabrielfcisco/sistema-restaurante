@@ -1,8 +1,8 @@
 # Banco — Sprint 01
 
-## Estado antes da Sprint 4
+## Sprint 4 — persistência
 
-Categorias e chamados da Sprint 3 já estão persistidos. `Produto.categoria` é FK textual para `Categoria`; `Produto.setor` já existe. `Comanda.status` inclui `CONTA_SOLICITADA`, `PAGA` e `FECHADA`; não existe entidade de pagamento ou pré-conta/taxas. `ItemPedido` não possui preço ou setor histórico. Planejamento em [sprint-04.md](sprint-04.md); nenhuma migration é criada ou aplicada nesta preparação. Manter as migrations existentes intactas e planejar persistência incremental ao implementar as histórias.
+Migration incremental `20261125000000_fechamento_pagamento`: `Comanda.formaPagamento` e horário da solicitação, `PreConta` com documento JSON imutável por emissão, `Cobranca` única por pré-conta e `Pagamento` único por comanda/versão, com valor Decimal(14,2), forma e data. Sem backfill financeiro. `PAGA` indica quitação; `FECHADA` continua encerramento manual legado. Transação com lock de mesa registra pagamento, revoga apenas suas sessões, libera só seu cartão e, após a última comanda ativa, libera mesa/cancela chamados. Critérios e execução em [sprint-04.md](sprint-04.md). Não foi migrado o banco do grupo.
 
 US-12/13 acrescentam a migration aditiva `20261022000000_status_recebido`, preservando o histórico. Consulte [compatibilidade e execução](us-12-us-13.md). Aplicar somente após revisar o destino de desenvolvimento.
 

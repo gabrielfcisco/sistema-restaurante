@@ -1,5 +1,7 @@
 # Módulo Mesa — Grupo 9
 
+**Estado em 25/11/2026:** US-20/22/23/24/25/26 implementadas. O estado e contratos finais ao fim de `docs/sprint-04.md` (na raiz) prevalecem sobre as notas históricas de preparação abaixo. Preservar as regras e restrições de escopo.
+
 Leia o `AGENTS.md` da raiz e as referências em `screenshots/` e Figma antes de alterar interface. Este app React/Vite/Electron é cliente HTTP; não importa banco, Prisma, segredos, Node ou internals de outros apps. Reutilize `ui`, `api-client` e `contracts`. Mantenha português e Electron seguro.
 
 Base integrada: identificação por cartão/sessão, cardápio/categorias persistidas, confirmação de pedidos, acompanhamento US-16, chamado US-18 e extrato US-21. Preservar SSE autenticado por header, escopado à própria comanda, com snapshot na abertura/reconexão. Chamado pendente não duplica; extrato inclui todos os pedidos confirmados, inclusive em preparo. Categorias inativas bloqueiam catálogo e confirmação na API. Preços permanecem estáveis durante operação.

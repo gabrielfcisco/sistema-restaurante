@@ -1,5 +1,7 @@
 # Referências visuais — Sprint 4
 
+Implementação funcional concluída em 25/11/2026, usando as capturas e adaptações autorizadas. As descrições de prévias abaixo registram a preparação de 23/11; os fluxos agora usam dados reais da API. `ProdutosPreview.tsx` foi substituído por `Produtos.tsx`.
+
 Arquivo fornecido pelo responsável e consultado pelo conector Figma em 23/11/2026: [Sistema do restaurante](https://www.figma.com/design/d4bhW06MzSoifev04TyKF2/Sem-t%C3%ADtulo?node-id=0-1). A página consultada é `0:1`.
 
 | Tela | Nó e link | Captura versionada |

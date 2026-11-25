@@ -49,11 +49,11 @@ Use `npm run check` na raiz após mudanças relevantes, quando o ambiente permit
 
 Os perfis históricos estão em `.agents/agents/api-sprint2-routes.md` e `.agents/agents/api-sprint3.md`. Para a sprint atual, consulte `.agents/agents/api-sprint4.md` e `docs/sprint-04.md`.
 
-## Sprint 4 — preparação
+## Sprint 4 — implementada
 
 - Escopo negociado: US-20, US-22, US-23, US-24, US-25 e US-26 (50 pontos). Critérios completos, tarefas, dependências, propostas e decisões confirmadas em `docs/sprint-04.md`; leitura obrigatória antes de trabalhar nesta sprint.
-- Esta etapa prepara o repositório. Implementar funcionalidades somente quando a respectiva história for solicitada. Não confundir rotas propostas com endpoints existentes.
+- US-20/22/23/24/25/26 implementadas; consultar contratos finais e verificações ao fim de `docs/sprint-04.md`. Preservar esse comportamento e implementar novos escopos somente quando solicitados.
 - Reutilizar mesa, administração, garçom, recepção, cozinha e bar. Produtos pertencem à administração; fechamento à mesa; consulta/pagamento ao caixa. Não duplicar backend ou regras entre apps.
 - US-20/26 compartilham formulário e contratos de produto. US-24/25 compartilham transação de pagamento. Não reutilizar a liberação manual que encerra todas as comandas para quitar uma comanda individual.
-- `CONTA_SOLICITADA` já existe; não criar outro enum equivalente. Persistência de pagamento ainda não existe. Migrations futuras devem ser incrementais, sem execução automática no banco de operação.
+- `CONTA_SOLICITADA` já existe; não criar outro enum equivalente. Persistência usa PreConta/Cobranca/Pagamento e migration incremental `20261125000000_fechamento_pagamento`, sem execução automática no banco de operação.
 - Consulte decisões confirmadas e referências visuais antes de fixar comportamento. Preservar múltiplas comandas por mesa, isolamento das sessões, precisão monetária e histórico. Não incluir US-27/28/29, upload, estorno ou integração financeira sem solicitação.
