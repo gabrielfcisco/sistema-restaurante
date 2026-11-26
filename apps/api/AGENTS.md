@@ -15,3 +15,9 @@ Sprint 4: implementar apenas a história solicitada. Propostas de rotas, dados, 
 `CONTA_SOLICITADA` e bloqueio de pedido já existem. Persistência de pagamento não existe e exige migration incremental quando US-24 for implementada. Unicidade por comanda deve resistir a concorrência/reinício. Lock da mesa deve serializar operações com abertura, pedidos e pagamento; revalidar estado na transação. Eventos só após commit. Não aplicar migrations em banco desconhecido.
 
 Contratos em `packages/contracts`, cliente em `packages/api-client`. Atualizar rotas finais e estado da história, executar `npm run check` e testes MySQL descartáveis pertinentes, preservando testes existentes.
+
+## Ajustes solicitados em 26/11/2026
+
+O responsável autorizou edição completa e exclusão de produtos, envio de fotos, exclusão de categorias e consulta do histórico de pagamentos. Estas decisões substituem as restrições anteriores sobre esse escopo. ItemPedido preserva nome/preço no momento da confirmação; não voltar a recalcular pedidos pelo preço atual do cadastro. A migration incremental `20261126000000_gestao_produtos` registra os valores disponíveis dos itens existentes. Produtos excluídos ficam fora da gestão e do cardápio, mantendo relações históricas. Categorias com produtos vinculados não podem ser excluídas. Conta com consumo zero não pode ser solicitada, emitida ou paga.
+
+Fotos: `src/imagens.ts` recebe PNG/JPEG/WebP de até 5 MB, gera nome UUID em `assets/cardapio/uploads/` e serve a imagem por `/api/assets/cardapio/`. Banco guarda apenas caminho relativo. Não aceitar caminho arbitrário, SVG, URL externa nem nome original como destino de gravação. Preservar uploads no backup da instalação; não versionar fotos enviadas.

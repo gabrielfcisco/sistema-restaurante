@@ -20,6 +20,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<{ id?: string; nome: string; ativo: boolean } | null>(null);
   const [confirmar, setConfirmar] = useState<CategoriaDto | null>(null);
+  const [exclusao, setExclusao] = useState<CategoriaDto | null>(null);
   const lock = useRef(false), version = useRef(0);
   const [message, setMessage] = useState('');
   const activeCount = categories.filter(category => category.ativo).length;
@@ -49,6 +50,12 @@ export function App() {
     finally { lock.current = false; setBusy(false); }
   }
 
+  async function excluir() {
+    if (lock.current || !exclusao) return; lock.current = true; setBusy(true); setMessage('');
+    try { await api.excluirCategoria(exclusao.idCategoria); setExclusao(null); setMessage('Categoria excluída.'); await carregar(); }
+    catch (e) { setMessage(e instanceof Error ? e.message : 'Não foi possível excluir a categoria.'); }
+    finally { lock.current = false; setBusy(false); }
+  }
   return <div className="admin-app">
     <header className="admin-topbar">
       <div className="admin-brand"><span className="admin-mark" aria-hidden="true">M</span><h1>Administração</h1></div>
@@ -65,13 +72,14 @@ export function App() {
 
       <main className="admin-main" id={pagina === 'Categorias' ? 'categorias' : 'produtos'}>
         {pagina === 'Produtos' ? <Produtos categorias={categories} /> : <>
-        <div className="page-heading"><div><p className="eyebrow">Cardápio</p><h2>Categorias</h2><p>Organize as categorias exibidas no cardápio do cliente.</p></div><button className="acao new-category" disabled={busy} onClick={() => { setConfirmar(null); setForm({ nome: '', ativo: true }); setMessage(''); }}><span aria-hidden="true">＋</span> Nova categoria</button></div>
+        <div className="page-heading"><div><p className="eyebrow">Cardápio</p><h2>Categorias</h2><p>Organize as categorias exibidas no cardápio do cliente.</p></div><button className="acao new-category" disabled={busy} onClick={() => { setExclusao(null); setConfirmar(null); setForm({ nome: '', ativo: true }); setMessage(''); }}><span aria-hidden="true">＋</span> Nova categoria</button></div>
         <button className="acao acao-secundaria" disabled={loading || busy} onClick={() => void carregar()}>Atualizar categorias</button>
         {loading && <p role="status">Carregando categorias…</p>}
         {message && <p className="admin-message" role="status">{message}</p>}
         {form && <form className="category-panel category-form" onSubmit={e => { e.preventDefault(); void salvar(); }}><h3>{form.id ? 'Editar categoria' : 'Nova categoria'}</h3><label htmlFor="nome-categoria">Nome</label><input id="nome-categoria" autoFocus required maxLength={120} value={form.nome} disabled={busy} onChange={e => setForm({ ...form, nome: e.target.value })} />{form.id && <label><input type="checkbox" checked={form.ativo} disabled={busy} onChange={e => setForm({ ...form, ativo: e.target.checked })} /> Categoria ativa</label>}<p>Ao inativar, os produtos associados ficam ocultos no cardápio.</p><button className="acao new-category" disabled={busy}>{busy ? 'Salvando…' : 'Salvar categoria'}</button><button className="acao acao-secundaria" type="button" disabled={busy} onClick={() => setForm(null)}>Cancelar</button></form>}
         {confirmar && <section className="category-panel category-form" aria-label="Confirmar alteração"><h3>{confirmar.ativo ? 'Inativar' : 'Ativar'} {confirmar.nome}?</h3><p>{confirmar.ativo ? 'Os produtos desta categoria ficarão ocultos. Pedidos já confirmados serão preservados.' : 'A categoria voltará a aparecer no cardápio.'}</p><button className="acao new-category" disabled={busy} onClick={() => void salvar()}>Confirmar</button><button className="acao acao-secundaria" disabled={busy} onClick={() => setConfirmar(null)}>Cancelar</button></section>}
 
+        {exclusao && <section className="category-panel delete-confirmation" aria-label="Confirmar exclusão da categoria"><h3>Excluir {exclusao.nome}?</h3><p>A exclusão só é permitida se não houver produtos vinculados.</p><button className="acao acao-perigo" disabled={busy} onClick={() => void excluir()}>Confirmar exclusão</button><button className="acao acao-secundaria" disabled={busy} onClick={() => setExclusao(null)}>Cancelar</button></section>}
         <section className="summary-grid" aria-label="Resumo das categorias">
           <article className="summary-card"><span>Total de categorias</span><strong>{categories.length}</strong><small>Inclui categorias ativas e inativas</small></article>
           <article className="summary-card"><span>Categorias ativas</span><strong>{activeCount}</strong><small>Disponíveis no cardápio</small></article>
@@ -87,7 +95,7 @@ export function App() {
                 <td><div className="category-name"><span className="category-icon" aria-hidden="true">▤</span><div><strong>{category.nome}</strong></div></div></td>
                 <td><span className={'status-pill ' + (category.ativo ? 'status-active' : 'status-inactive')}><span />{category.ativo ? 'Ativa' : 'Inativa'}</span></td>
                 <td className="visibility-cell">{category.ativo ? 'Visível no cardápio' : 'Oculta do cardápio'}</td>
-                <td><div className="row-actions"><button className="acao acao-secundaria" disabled={busy} onClick={() => { setConfirmar(null); setForm({ id: category.idCategoria, nome: category.nome, ativo: category.ativo }); }}>Editar</button><button className="acao acao-secundaria" disabled={busy} onClick={() => { setForm(null); setConfirmar(category); }}>{category.ativo ? 'Inativar' : 'Ativar'}</button></div></td>
+                <td><div className="row-actions"><button className="acao acao-secundaria" disabled={busy} onClick={() => { setConfirmar(null); setForm({ id: category.idCategoria, nome: category.nome, ativo: category.ativo }); }}>Editar</button><button className="acao acao-secundaria" disabled={busy} onClick={() => { setExclusao(null); setForm(null); setConfirmar(category); }}>{category.ativo ? 'Inativar' : 'Ativar'}</button><button className="acao acao-perigo" disabled={busy} onClick={() => { setForm(null); setConfirmar(null); setExclusao(category); setMessage(''); }}>Excluir</button></div></td>
               </tr>)}</tbody>
             </table>
           </div>

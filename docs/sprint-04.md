@@ -1,10 +1,16 @@
 # Sprint 4 — US-20, US-22, US-23, US-24, US-25 e US-26
 
-## Escopo e estado — implementado em 25/11/2026
+## Escopo e estado — finalizado em 26/11/2026
 
 Escopo negociado pelo Grupo 9: **50 pontos**. Branch de integração: `sprint-04`, criada a partir da `main` com a Sprint 3 integrada (PR #6). As seis histórias estão implementadas na branch `codex/sprint-04-completa`, criada a partir de `sprint-04` (`182dcf0`). Critérios e decisões abaixo foram preservados. As seções de preparação descrevem a base histórica; o contrato final e as verificações desta entrega estão ao final.
 
 Fonte dos cartões: `cartoes_UNICA_PLANILHA_DUPLEX.xlsx`, disponível fora do monorepo no ambiente de preparação. O conteúdo necessário está transcrito abaixo para que um clone seja autocontido. Frentes: H214:H224, H251:H261, A264:A274, H264:H274, A301:A311 e H301:H311; versos: A239:A249, A276:A286, H289:H299, A289:A299, H326:H336 e A326:A336. Critérios não devem ser deduzidos da numeração.
+
+## Fechamento da sprint — 26/11/2026
+
+Sprint finalizada após aceite do responsável: seis histórias negociadas (50 pontos), integração da entrega e ajustes autorizados de conta zerada, histórico do Caixa, categorias e gestão de produtos com fotos. Os ajustes de 26/11 descritos ao final prevalecem sobre as restrições históricas de preparação.
+
+Validação: 44 testes aprovados, incluindo bancos MySQL descartáveis; lint, tipos, builds e schema aprovados; fluxo Electron validado. Migration aplicada no banco local conferido. Em outros ambientes, gerar o Prisma e aplicar as migrations pendentes antes de iniciar a API.
 
 ## Histórias e critérios da planilha
 
@@ -236,3 +242,11 @@ Fora do escopo: estorno, cancelamento/reabertura da conta, parcelamento, múltip
 ### Resultado da validação desta entrega
 
 `npm run check` aprovado em Node 24, com **42 testes aprovados e nenhum ignorado**, incluindo todas as suítes MySQL opt-in em MariaDB local descartável. Lint, tipos, builds de todos os apps e schema Prisma aprovados. `npm run test:sprint4:desktop` aprovado: pagamento real de R$ 110,89 persistido após pré-conta com consumo R$ 99,80, serviço de 10% e taxa fixa R$ 1,11. Capturas de produtos, mesa, garçom e caixa conferidas; PDF de uma página renderizado e acentos/valores inspecionados. Layout sem overflow horizontal em desktop e caixa com largura 760. Nenhum dado do banco do grupo foi alterado.
+
+## Ajustes autorizados — 26/11/2026
+
+Implementados bloqueio de conta zerada; histórico persistido do Caixa inicialmente recolhido, com resumo e expansão de detalhes; exclusão de categorias sem produtos; edição completa/exclusão lógica de produtos e fotos. O botão Alterar setor foi substituído por Editar, reunindo setor, demais campos e exclusão confirmada. Fotos são servidas pela API comum e aparecem no cardápio.
+
+A edição de preço exigiu snapshots de nome/preço no ItemPedido para preservar consumo anterior. Migration incremental `20261126000000_gestao_produtos`; não alterar migrations já aplicadas. Contratos e limites estão em `contratos-api.md`. Categorias vinculadas continuam protegidas pela FK, inclusive quando o produto está excluído logicamente.
+
+Validação dos ajustes: `npm run check` aprovado com 44 testes, incluindo MySQL em bancos descartáveis, lint, tipos, builds e schema. `npm run test:sprint4:desktop` aprovado com criação/exclusão de categoria, cadastro/edição/foto/exclusão de produto, imagem no cardápio, histórico recolhido e expansão, além do fluxo de cobrança e pagamento. A migration foi aplicada no banco local de desenvolvimento conferido em 26/11/2026; outros ambientes precisam aplicá-la antes de iniciar.

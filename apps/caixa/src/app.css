@@ -33,3 +33,9 @@ button, input, select { font: inherit; }
 .caixa-card input[type=checkbox] { width: auto; min-height: auto; }
 .caixa-card h3 { margin: 0; }
 @media print { .caixa-topbar, .caixa-main > :not(.preconta), .preconta button, .preconta .caixa-card, .preconta .caixa-actions { display: none !important; } body { background: white; } .caixa-main, .preconta { padding: 0; max-width: none; box-shadow: none; } }
+
+.historico-lista { list-style: none; padding: 0; display: grid; gap: 10px; }
+.historico-resumo { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 16px; color: #29231f; background: #faf7f2; border: 1px solid #e6ded3; border-radius: 8px; text-align: left; cursor: pointer; font: inherit; }
+.historico-resumo small { display: block; color: #706a64; margin-top: 5px; }
+.historico-detalhe { padding: 20px; display: grid; gap: 12px; border: 1px solid #e6ded3; border-radius: 8px; }
+.historico-detalhe h4 { margin: 4px 0; }

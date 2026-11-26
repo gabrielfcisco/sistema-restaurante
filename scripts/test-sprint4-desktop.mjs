@@ -37,6 +37,10 @@ try {
   console.log('Sprint 4: interface persistiu pagamento de R$ 110,89 e liberou a mesa.');
 } finally {
   if (server && server.exitCode === null) { const exited = once(server, 'exit'); server.kill(); await exited; }
-  if (created) await connection.query('DROP DATABASE ' + database); await connection.end();
+  if (created) {
+    const fotos = await connection.query('SELECT imagem_path FROM produto WHERE imagem_path IS NOT NULL').catch(() => []);
+    for (const foto of fotos) if (/^cardapio\/uploads\/[0-9a-f-]{36}\.png$/.test(foto.imagem_path)) await unlink(join('assets', foto.imagem_path)).catch(() => {});
+    await connection.query('DROP DATABASE ' + database);
+  } await connection.end();
   await unlink(configPath).catch(() => {}); await unlink(join(root, 'preconta.pdf')).catch(() => {}); await rmdir(root);
 }

@@ -11,3 +11,7 @@ Taxas opcionais: nome e percentual sobre consumo ou valor fixo por comanda. Nenh
 Pagamento somente com itens entregues e conta solicitada; unicidade persistida, status revalidado sob lock e rollback integral. Finalizar somente a comanda paga e liberar mesa só sem outras comandas ativas. Não chamar a liberação manual que encerra todas as comandas. Preservar histórico, sessões/cartão e chamadas conforme regras da sprint.
 
 Antes de adicionar migration, conferir schema e transações existentes. Não alterar migrations aplicadas; não executar no banco de operação. Usar DTOs/cliente compartilhados, erros existentes, eventos após commit e testes de concorrência em banco descartável.
+
+## Ajustes solicitados em 26/11/2026
+
+O responsável autorizou edição completa e exclusão de produtos, envio de fotos, exclusão de categorias e consulta do histórico de pagamentos. Estas decisões substituem as restrições anteriores sobre esse escopo. ItemPedido preserva nome/preço no momento da confirmação; não voltar a recalcular pedidos pelo preço atual do cadastro. A migration incremental `20261126000000_gestao_produtos` registra os valores disponíveis dos itens existentes. Produtos excluídos ficam fora da gestão e do cardápio, mantendo relações históricas. Categorias com produtos vinculados não podem ser excluídas. Conta com consumo zero não pode ser solicitada, emitida ou paga.

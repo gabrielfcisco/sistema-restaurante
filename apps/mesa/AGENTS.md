@@ -9,3 +9,7 @@ Base integrada: identificação por cartão/sessão, cardápio/categorias persis
 Sprint 4: US-22 adicionará solicitação de fechamento; ler `../../docs/sprint-04.md`. A API já bloqueia pedidos em `CONTA_SOLICITADA`, mas a ação de solicitar a conta ainda não existe. Implementar somente quando a história for solicitada, usando sessão vinculada. Desabilitar novos pedidos após confirmação real e tratar conflitos de pedido/fechamento. Solicitar conta não registra pagamento nem libera mesa. Preservar consulta do extrato e acompanhamento durante espera. Não implementar reabertura/cancelamento sem decisão.
 
 Trocar cliente limpa dados e token locais sem encerrar a comanda. Pagamento futuro deverá revogar sessões no servidor; preservar revalidação existente e não exibir dados do cliente anterior.
+
+## Ajustes solicitados em 26/11/2026
+
+O responsável autorizou edição completa e exclusão de produtos, envio de fotos, exclusão de categorias e consulta do histórico de pagamentos. Estas decisões substituem as restrições anteriores sobre esse escopo. ItemPedido preserva nome/preço no momento da confirmação; não voltar a recalcular pedidos pelo preço atual do cadastro. A migration incremental `20261126000000_gestao_produtos` registra os valores disponíveis dos itens existentes. Produtos excluídos ficam fora da gestão e do cardápio, mantendo relações históricas. Categorias com produtos vinculados não podem ser excluídas. Conta com consumo zero não pode ser solicitada, emitida ou paga.

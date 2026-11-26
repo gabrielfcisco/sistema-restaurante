@@ -57,3 +57,7 @@ Os perfis históricos estão em `.agents/agents/api-sprint2-routes.md` e `.agent
 - US-20/26 compartilham formulário e contratos de produto. US-24/25 compartilham transação de pagamento. Não reutilizar a liberação manual que encerra todas as comandas para quitar uma comanda individual.
 - `CONTA_SOLICITADA` já existe; não criar outro enum equivalente. Persistência usa PreConta/Cobranca/Pagamento e migration incremental `20261125000000_fechamento_pagamento`, sem execução automática no banco de operação.
 - Consulte decisões confirmadas e referências visuais antes de fixar comportamento. Preservar múltiplas comandas por mesa, isolamento das sessões, precisão monetária e histórico. Não incluir US-27/28/29, upload, estorno ou integração financeira sem solicitação.
+
+## Ajustes solicitados em 26/11/2026
+
+O responsável autorizou edição completa e exclusão de produtos, envio de fotos, exclusão de categorias e consulta do histórico de pagamentos. Estas decisões substituem as restrições anteriores sobre esse escopo. ItemPedido preserva nome/preço no momento da confirmação; não voltar a recalcular pedidos pelo preço atual do cadastro. A migration incremental `20261126000000_gestao_produtos` registra os valores disponíveis dos itens existentes. Produtos excluídos ficam fora da gestão e do cardápio, mantendo relações históricas. Categorias com produtos vinculados não podem ser excluídas. Conta com consumo zero não pode ser solicitada, emitida ou paga.

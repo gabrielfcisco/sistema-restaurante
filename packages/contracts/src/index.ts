@@ -1,7 +1,7 @@
 export interface HealthResponse { status: 'ok'; service: 'restaurante-api' }
 export type FormaPagamento = 'DINHEIRO' | 'PIX' | 'DEBITO' | 'CREDITO';
 export const FORMAS_PAGAMENTO: Record<FormaPagamento, string> = { DINHEIRO: 'Dinheiro', PIX: 'Pix', DEBITO: 'Débito', CREDITO: 'Crédito' };
-export interface CriarProdutoInput { nome: string; descricao: string | null; preco: number; categoria: string; setor: SetorOperacional; ativo: boolean }
+export interface CriarProdutoInput { nome: string; descricao: string | null; preco: number; categoria: string; setor: SetorOperacional; ativo: boolean; imagemPath?: string | null }
 export interface ProdutoGestaoDto extends CriarProdutoInput { idProduto: number; nomeCategoria: string; categoriaAtiva: boolean }
 export interface FechamentoDto { idComanda: number; status: StatusComanda; formaPagamento: FormaPagamento | null; solicitadoEm: string | null }
 export interface TaxaInput { nome: string; tipo: 'PERCENTUAL' | 'FIXA'; valor: number }
@@ -12,6 +12,8 @@ export interface ContaCaixaDto extends DocumentoContaDto { todosEntregues: boole
 export interface CobrancaDto { idCobranca: number; idPreconta: number; idComanda: number; numeroMesa: number; criadaEm: string; concluidaEm: string | null }
 export interface AvisosContasDto { solicitacoes: Omit<ContaResumoDto, 'nomeCliente'>[]; cobrancas: CobrancaDto[] }
 export interface PagamentoDto { idPagamento: number; idComanda: number; idPreconta: number; forma: FormaPagamento; valor: number; pagoEm: string; mesaLiberada: boolean }
+export interface PagamentoResumoDto extends Omit<PagamentoDto, 'mesaLiberada'> { numeroMesa: number; nomeCliente: string }
+export interface PagamentoDetalheDto extends PagamentoResumoDto { preconta: PrecontaDto }
 export interface ApiErrorResponse { error: { code: string; message: string } }
 export type StatusMesa = 'LIVRE' | 'OCUPADA' | 'RESERVADA' | 'MANUTENCAO';
 export type StatusComanda = 'ABERTA' | 'EM_CONSUMO' | 'CONTA_SOLICITADA' | 'PAGA' | 'FECHADA';
@@ -76,6 +78,7 @@ export interface ComandaGarcomResumoDto { idComanda: number; status: StatusComan
 export interface MesaGarcomDto { idMesa: number; numeroMesa: number; comandas: ComandaGarcomResumoDto[] }
 export interface ComandaGarcomDto extends ComandaGarcomResumoDto { idMesa: number; numeroMesa: number; pedidos: PedidoConfirmadoDto[]; total: number }
 export interface ProdutoResumoDto {
+  imagemPath?: string | null;
   idProduto: number;
   nome: string;
   descricao: string | null;

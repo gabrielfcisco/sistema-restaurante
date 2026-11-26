@@ -1,3 +1,5 @@
+import { PrismaCategoriasService } from '../apps/api/src/modules/administracao/service';
+import { PrismaGarcomService } from '../apps/api/src/modules/garcom/service';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile, readdir } from 'node:fs/promises';
@@ -65,9 +67,10 @@ test('MySQL Sprint 4: produtos, fechamento, pré-contas, pagamento atômico e m�
       await assert.rejects(caixa.emitir(a.id, []), { code: 'COBRANCA_PENDENTE' });
       await novo.concluir(avisos[0].idCobranca); assert.equal(await db!.pagamento.count(), 0);
       assert.equal((await caixa.documentoEmitido(p2.idPreconta)).total, 15.74);
-      // Alteração externa de preço torna o documento obsoleto, mesmo com o mesmo ID.
+      // Edição do cadastro não muda o preço contratado nem a pré-conta.
       await db!.produto.update({ where: { idProduto: bebida.idProduto }, data: { preco: 15 } });
-      await assert.rejects(caixa.pagar(a.id, p2.idPreconta), { code: 'PRECONTA_DESATUALIZADA' });
+      assert.equal((await caixa.detalhe(a.id)).subtotal, 12.4);
+      await assert.rejects(caixa.pagar(a.id, p2.idPreconta), { code: 'ITENS_PENDENTES' });
       await db!.produto.update({ where: { idProduto: bebida.idProduto }, data: { preco: 12.35 } });
     });
     await t.test('pagamento concorrente único preserva outra comanda, sessões, cartões e histórico', async () => {
@@ -82,15 +85,18 @@ test('MySQL Sprint 4: produtos, fechamento, pré-contas, pagamento atômico e m�
       await assert.rejects(sprint.sessao(a.s.token), { code: 'SESSAO_INVALIDA' }); assert.equal((await sprint.sessao(b.s.token)).idComanda, b.id);
       assert.equal(await db!.vinculoCartao.count({ where: { idComanda: b.id } }), 1); assert.equal(await db!.vinculoCartao.count({ where: { idComanda: a.id } }), 0);
       assert.equal(await db!.chamada.count({ where: { status: 'PENDENTE' } }), 1);
+      await novoPedido(b.id, b.s.token);
+      await db!.itemPedido.updateMany({ where: { pedido: { idComanda: b.id } }, data: { status: 'ENTREGUE' } });
       await caixa.solicitar(b.id, b.s.token, 'DINHEIRO'); const pb = await caixa.emitir(b.id, []);
       assert.equal((await caixa.pagar(b.id, pb.idPreconta)).mesaLiberada, true);
       assert.equal((await sprint.listarMesas())[0].status, 'LIVRE'); assert.equal(await db!.chamada.count({ where: { status: 'CANCELADA' } }), 1);
-      assert.equal(await db!.itemPedido.count(), 2); assert.equal((await db!.comanda.findUniqueOrThrow({ where: { idComanda: a.id } })).status, 'PAGA');
+      assert.equal(await db!.itemPedido.count(), 3); assert.equal((await db!.comanda.findUniqueOrThrow({ where: { idComanda: a.id } })).status, 'PAGA');
       assert.equal((await caixa.listar()).length, 0); assert.equal((await caixa.avisos()).solicitacoes.length, 0);
       await produtos.setor(produto.idProduto, 'BAR');
     });
     await t.test('fechamento versus pedido e setor versus pedido são serializados sem perder itens', async () => {
       const c = await abrir();
+      await novoPedido(c.id, c.s.token);
       await Promise.allSettled([novoPedido(c.id, c.s.token), caixa.solicitar(c.id, c.s.token, 'DEBITO')]);
       assert.equal((await caixa.fechamento(c.id, c.s.token)).status, 'CONTA_SOLICITADA');
       const count = await db!.pedido.count({ where: { idComanda: c.id } });
@@ -122,7 +128,7 @@ test('MySQL Sprint 4: produtos, fechamento, pré-contas, pagamento atômico e m�
       const m = await db!.mesa.create({ data: { numero: 99 } });
       const abrirOutra = async (codigoCartao: string) => { const c = await sprint.abrir({ idMesa: m.idMesa, idCliente: cliente.idCliente, codigoCartao, confirmarMesaOcupada: true }, 'rollback-abertura-' + codigoCartao); return { id: c.dto.idComanda, s: await sprint.acessar(codigoCartao, m.idMesa) }; };
       const x = await abrirOutra('20001'), y = await abrirOutra('20002');
-      for (const c of [x, y]) await caixa.solicitar(c.id, c.s.token, 'CREDITO');
+      for (const c of [x, y]) { await novoPedido(c.id, c.s.token); await db!.itemPedido.updateMany({ where: { pedido: { idComanda: c.id } }, data: { status: 'ENTREGUE' } }); await caixa.solicitar(c.id, c.s.token, 'CREDITO'); }
       const px = await caixa.emitir(x.id, []), py = await caixa.emitir(y.id, []);
       await connection.query("CREATE TRIGGER falha_quitacao BEFORE UPDATE ON comanda FOR EACH ROW BEGIN IF NEW.status='PAGA' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='falha de teste'; END IF; END");
       try { await assert.rejects(caixa.pagar(x.id, px.idPreconta)); } finally { await connection.query('DROP TRIGGER falha_quitacao'); }
@@ -134,10 +140,42 @@ test('MySQL Sprint 4: produtos, fechamento, pré-contas, pagamento atômico e m�
       assert.equal(r.filter(p => p.mesaLiberada).length, 1);
       assert.equal((await db!.mesa.findUniqueOrThrow({ where: { idMesa: m.idMesa } })).status, 'LIVRE');
       const antiga = await caixa.documentoEmitido(px.idPreconta); assert.equal(antiga.idComanda, x.id);
-      const z = await abrirOutra('20003'); await caixa.solicitar(z.id, z.s.token, 'PIX'); const pz = await caixa.emitir(z.id, []);
+      const z = await abrirOutra('20003'); await novoPedido(z.id, z.s.token); await db!.itemPedido.updateMany({ where: { pedido: { idComanda: z.id } }, data: { status: 'ENTREGUE' } }); await caixa.solicitar(z.id, z.s.token, 'PIX'); const pz = await caixa.emitir(z.id, []);
       await Promise.all([caixa.pagar(z.id, pz.idPreconta), abrirOutra('20004')]);
       assert.equal((await db!.mesa.findUniqueOrThrow({ where: { idMesa: m.idMesa } })).status, 'OCUPADA');
       assert.equal(await db!.comanda.count({ where: { idMesa: m.idMesa, status: { in: ['ABERTA', 'EM_CONSUMO', 'CONTA_SOLICITADA'] } } }), 1);
+    });
+    await t.test('conta zerada é bloqueada; edição e exclusão preservam consumo e histórico', async () => {
+      const categorias = new PrismaCategoriasService(() => client), garcom = new PrismaGarcomService(() => client);
+      const c = await abrir();
+      await assert.rejects(caixa.solicitar(c.id, c.s.token, 'PIX'), { code: 'CONTA_ZERADA' });
+      assert.equal((await caixa.fechamento(c.id, c.s.token)).status, 'ABERTA');
+      const gratis = await produtos.criar({ nome: 'Cortesia', descricao: null, preco: 0, categoria: 'PRATO', setor: 'COZINHA', ativo: true });
+      await novoPedido(c.id, c.s.token, gratis.idProduto);
+      await assert.rejects(caixa.solicitar(c.id, c.s.token, 'PIX'), { code: 'CONTA_ZERADA' });
+      const cat = await categorias.criar('Categoria temporária'); await categorias.excluir(cat.idCategoria);
+      assert.ok(!(await categorias.listar()).some(x => x.idCategoria === cat.idCategoria));
+      await assert.rejects(categorias.excluir('PRATO'), { code: 'CATEGORIA_EM_USO' });
+      const input = { nome: 'Produto original', descricao: 'Descrição', preco: 10, categoria: 'PRATO', setor: 'COZINHA' as const, ativo: true };
+      const p = await produtos.criar(input); await novoPedido(c.id, c.s.token, p.idProduto);
+      await assert.rejects(produtos.alterar(p.idProduto, { ...input, setor: 'BAR' }), { code: 'SETOR_EM_USO' });
+      await produtos.alterar(p.idProduto, { ...input, nome: 'Produto editado', preco: 25, descricao: 'Nova descrição', categoria: 'BEBIDA' });
+      assert.equal((await sprint.extratoComanda(c.id, c.s.token)).total, 10);
+      const pedidos = await sprint.listarPedidosComanda(c.id, c.s.token); assert.equal(pedidos.at(-1)!.itens[0].nomeProduto, 'Produto original');
+      assert.equal((await garcom.comanda(c.id)).total, 10);
+      await caixa.solicitar(c.id, c.s.token, 'PIX'); const documento = await caixa.emitir(c.id, []); assert.equal(documento.total, 10);
+      await produtos.excluir(p.idProduto);
+      assert.ok(!(await produtos.listar()).some(x => x.idProduto === p.idProduto));
+      assert.ok(!(await sprint.produtosCardapio(c.s.token)).some(x => x.idProduto === p.idProduto));
+      await assert.rejects(produtos.alterar(p.idProduto, input), { code: 'PRODUTO_INEXISTENTE' });
+      const outra = await abrir(); await assert.rejects(novoPedido(outra.id, outra.s.token, p.idProduto), { code: 'PRODUTO_INDISPONIVEL' });
+      assert.ok((await operacao.listar('COZINHA')).some(x => x.nomeProduto === 'Produto original'));
+      await db!.itemPedido.updateMany({ where: { pedido: { idComanda: c.id } }, data: { status: 'ENTREGUE' } });
+      const pagamento = await caixa.pagar(c.id, documento.idPreconta);
+      const historico = await caixa.pagamentos(); assert.equal(historico[0].idPagamento, pagamento.idPagamento);
+      const detalhe = await caixa.pagamento(pagamento.idPagamento); assert.equal(detalhe.preconta.total, 10); assert.equal(detalhe.preconta.itens.at(-1)!.nomeProduto, 'Produto original');
+      assert.ok((await caixa.pagamentos(pagamento.idPagamento)).every(x => x.idPagamento < pagamento.idPagamento));
+      await assert.rejects(caixa.pagamento(4294967295), { code: 'PAGAMENTO_INEXISTENTE' });
     });
   } finally { await db?.$disconnect(); if (created) await connection.query('DROP DATABASE ' + database); await connection.end(); }
 });

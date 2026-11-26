@@ -1,3 +1,4 @@
+import { Historico } from './Historico';
 import { Button } from '@restaurante/ui';
 import { acompanharContas, ApiError, createApiClient } from '@restaurante/api-client';
 import { FORMAS_PAGAMENTO, type ContaCaixaDto, type ContaResumoDto, type PagamentoDto, type TaxaInput } from '@restaurante/contracts';
@@ -60,6 +61,7 @@ export function App() {
         </section>}
       </>}
       {resultado && <section className="caixa-card" role="status"><h2>Pagamento registrado #{resultado.idPagamento}</h2><p>Comanda #{resultado.idComanda} finalizada · {moeda(resultado.valor)} em {FORMAS_PAGAMENTO[resultado.forma]}</p><p>{resultado.mesaLiberada ? 'Mesa liberada para novo atendimento.' : 'Mesa permanece ocupada: há outras comandas ativas.'}</p><p>Histórico e documento de pagamento preservados.</p></section>}
+      <Historico key={resultado?.idPagamento ?? 0} base={base} ultimoPagamento={resultado?.idPagamento} />
     </main>
   </div>;
 }

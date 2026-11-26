@@ -16,6 +16,7 @@ import { administracaoRoutes } from './modules/administracao/routes';
 import { PrismaProdutosService, produtosRoutes } from './modules/administracao/produtos';
 import { PrismaCaixaService } from './modules/caixa/service';
 import { caixaRoutes } from './modules/caixa/routes';
+import { diretorioImagens, imagensRoutes } from './imagens';
 
 export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig; operacao?: OperacaoService; filaIntervalMs?: number; garcom?: GarcomService; categorias?: CategoriasService; caixa?: PrismaCaixaService; produtos?: PrismaProdutosService } = {}) {
   const app = express();
@@ -26,6 +27,8 @@ export function createApp(checkDatabase: () => Promise<void>, options: { service
     callback(null, !origin || origin === 'null' || origins.includes(origin));
   } }));
   app.use(express.json({ limit: '32kb' }));
+  app.use('/api/assets/cardapio', express.static(diretorioImagens, { dotfiles: 'deny', setHeaders(res) { res.setHeader('X-Content-Type-Options', 'nosniff'); } }));
+  app.use('/api/administracao', imagensRoutes());
   app.get('/api/health', (_request, response) => {
     response.json({ status: 'ok', service: 'restaurante-api' } satisfies HealthResponse);
   });

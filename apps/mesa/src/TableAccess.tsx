@@ -65,6 +65,9 @@ export function TableAccess() {
   const [historicoPedidos, setHistoricoPedidos] = useState<PedidoConfirmadoDto[]>([]);
   const [extrato, setExtrato] = useState<ExtratoComandaDto | null>(null);
   const [contaSolicitada, setContaSolicitada] = useState(false);
+  const totalConfirmado = historicoPedidos.reduce((total, pedido) => total + pedido.total, 0);
+  const [baseImagens, setBaseImagens] = useState(import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3333/api');
+  useEffect(() => { void window.restaurante?.painel?.().then(c => setBaseImagens(c.apiUrl)).catch(() => {}); }, []);
   const [forma, setForma] = useState<FormaPagamento>('PIX');
   const [ignorarCarrinho, setIgnorarCarrinho] = useState(false);
 
@@ -409,7 +412,8 @@ export function TableAccess() {
             </div>
             <div className="mesa-topbar-actions">
               <Button type="button" className="secondary" onClick={() => void abrirExtrato()} disabled={busy || offline}>Ver extrato</Button>
-              <Button type="button" className="secondary" onClick={() => { setIgnorarCarrinho(false); setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'pedir-conta'); }} disabled={busy || offline}>{contaSolicitada ? 'Conta solicitada' : 'Pedir conta'}</Button>
+              <Button type="button" className="secondary" onClick={() => { setIgnorarCarrinho(false); setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'pedir-conta'); }} disabled={busy || offline || (!contaSolicitada && totalConfirmado <= 0)}>{contaSolicitada ? 'Conta solicitada' : 'Pedir conta'}</Button>
+              {!contaSolicitada && totalConfirmado <= 0 && <p className="muted">A conta só pode ser solicitada após confirmar um pedido com valor maior que zero.</p>}
               <Button type="button" className="secondary" onClick={() => void chamarGarcom()} disabled={busy || offline}>Chamar garçom</Button>
               <Button type="button" onClick={abrirRevisaoPedido} disabled={busy || offline || contaSolicitada}>
                 🛒 Carrinho <span className="cart-badge" data-testid="cart-count">{totalItensCarrinho}</span>
@@ -468,7 +472,7 @@ export function TableAccess() {
                     >
                       <div className="product-image-container">
                         <img
-                          src={getImagemProduto(produto.nome)}
+                          src={produto.imagemPath ? baseImagens.replace(/\/$/, '') + '/assets/' + produto.imagemPath : getImagemProduto(produto.nome)}
                           alt={produto.nome}
                           className="product-image"
                           loading="lazy"
@@ -507,7 +511,7 @@ export function TableAccess() {
               <div className="detail-layout">
                 <div className="detail-image-container">
                   <img
-                    src={getImagemProduto(produtoDetalhe.nome, true)}
+                    src={produtoDetalhe.imagemPath ? baseImagens.replace(/\/$/, '') + '/assets/' + produtoDetalhe.imagemPath : getImagemProduto(produtoDetalhe.nome, true)}
                     alt={produtoDetalhe.nome}
                     className="detail-image"
                   />
@@ -739,7 +743,7 @@ export function TableAccess() {
                   <label htmlFor="forma-conta">Forma de pagamento</label><select id="forma-conta" disabled={busy} value={forma} onChange={e => setForma(e.target.value as FormaPagamento)}>{Object.entries(FORMAS_PAGAMENTO).map(([v, label]) => <option value={v} key={v}>{label}</option>)}</select>
                   <div className="table-actions">
                     <Button type="button" className="secondary" onClick={() => setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'cardapio')}>Cancelar</Button>
-                    <Button type="button" disabled={busy || offline} onClick={() => void solicitarFechamento()}>{busy ? 'Solicitando…' : 'Solicitar fechamento'}</Button>
+                    <Button type="button" disabled={busy || offline || totalConfirmado <= 0} onClick={() => void solicitarFechamento()}>{busy ? 'Solicitando…' : 'Solicitar fechamento'}</Button>
                   </div>
                 </>
               )}

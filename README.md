@@ -1,6 +1,6 @@
 # Sistema de restaurante — Grupo 9
 
-**Sprint 4 implementada:** US-20/22/23/24/25/26 (50 pontos), com produtos/setor, fechamento, caixa, pré-conta, taxas, pagamentos e liberação da mesa. Consulte [contratos, migration e execução](docs/sprint-04.md#entrega-funcional--25112026).
+**Sprint 4 finalizada em 26/11/2026:** US-20/22/23/24/25/26 (50 pontos), com produtos/setor, fechamento, caixa, pré-conta, taxas, pagamentos e liberação da mesa. Consulte [contratos, migration e execução](docs/sprint-04.md#entrega-funcional--25112026).
 
 **Sprint 3 integrada.** Cozinha e bar avançam o preparo até PRONTO. O garçom recebe chamados e retirada, confirma a entrega e consulta o consumo por mesa/comanda. O cliente acompanha os pedidos, chama o garçom e consulta o extrato da própria comanda. A administração gerencia categorias persistidas.
 
@@ -97,3 +97,9 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 `apps/api` contém o backend único. Os aplicativos compartilham contratos, cliente HTTP e componentes operacionais. O legado em `legacy/nextjs` não é executado.
 
 Caixa e produtos estão funcionais. Antes de executar, gere o cliente Prisma e aplique `20261125000000_fechamento_pagamento` somente em banco conhecido de desenvolvimento. Banco compartilhado do grupo não foi migrado nesta entrega.
+
+## Ajustes de gestão — 26/11/2026
+
+Administração permite editar nome, descrição, preço, categoria, setor, disponibilidade e foto de produtos; a exclusão preserva pedidos antigos. Categorias sem produtos vinculados podem ser excluídas. O Caixa oferece histórico recolhido, lista resumida e detalhes dos pagamentos. Conta com consumo zero é bloqueada.
+
+Após atualizar, execute `npm run db:generate` e, no banco de desenvolvimento conferido, `npm run db:deploy`, antes de reiniciar `npm run dev`. A migration `20261126000000_gestao_produtos` adiciona foto/exclusão e snapshots de nome/preço dos itens. Os valores antigos são inicializados pelo cadastro disponível na migração; pagamentos já emitidos usam seus próprios documentos persistidos. Fotos enviadas (PNG/JPEG/WebP até 5 MB) ficam em `assets/cardapio/uploads/`, ignoradas pelo Git e incluídas no backup da instalação.

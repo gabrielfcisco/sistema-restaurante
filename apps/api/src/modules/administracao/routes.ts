@@ -3,6 +3,10 @@ import type { CategoriasService } from './service';
 import { exigir, nome, objeto } from '../validacao';
 export function administracaoRoutes(service: CategoriasService) {
   const router = Router();
+  router.delete('/categorias/:idCategoria', async (req, res) => {
+    exigir(/^[A-Za-z0-9_-]{1,32}$/.test(req.params.idCategoria), 400, 'ID_INVALIDO', 'Categoria inválida.');
+    await service.excluir(req.params.idCategoria); res.sendStatus(204);
+  });
   router.get('/categorias', async (_req, res) => res.json(await service.listar()));
   router.post('/categorias', async (req, res) => {
     const body = objeto(req.body);

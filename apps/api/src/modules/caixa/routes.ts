@@ -26,6 +26,8 @@ function stream(res: Response, read: () => Promise<unknown>) {
 }
 export function caixaRoutes(service: PrismaCaixaService) {
   const router = Router();
+  router.get('/caixa/pagamentos', async (req, res) => res.json(await service.pagamentos(req.query.antes === undefined ? undefined : idRota(req.query.antes))));
+  router.get('/caixa/pagamentos/:idPagamento', async (req, res) => res.json(await service.pagamento(idRota(req.params.idPagamento))));
   router.get('/caixa/comandas', async (_req, res) => res.json(await service.listar()));
   router.get('/caixa/precontas/:idPreconta', async (req, res) => res.json(await service.documentoEmitido(idRota(req.params.idPreconta))));
   router.get('/caixa/eventos', (_req, res) => stream(res, () => service.listar()));

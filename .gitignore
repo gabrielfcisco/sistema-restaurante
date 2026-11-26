@@ -11,3 +11,4 @@ apps/api/src/generated/
 *.log
 .DS_Store
 .next/
+assets/cardapio/uploads/

@@ -80,6 +80,8 @@ model Produto {
   grupo Categoria @relation(fields: [categoria], references: [idCategoria], onDelete: Restrict, onUpdate: Cascade)
   setor     SetorProduto
   ativo     Boolean          @default(true)
+  imagemPath String? @map("imagem_path") @db.VarChar(255)
+  excluidoEm DateTime? @map("excluido_em") @db.DateTime(3)
   itens     ItemPedido[]
 
   @@map("produto")
@@ -211,6 +213,8 @@ model Pedido {
 }
 
 model ItemPedido {
+  nomeProduto String? @map("nome_produto") @db.VarChar(120)
+  precoUnitario Decimal? @map("preco_unitario") @db.Decimal(10, 2)
   idItem     Int              @id @default(autoincrement()) @map("id_item") @db.UnsignedInt
   quantidade Int              @db.UnsignedInt
   observacao String?          @db.VarChar(500)

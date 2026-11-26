@@ -11,3 +11,7 @@ Taxas: nome, percentual sobre consumo ou valor fixo em reais por comanda; nenhum
 Pagamento só com todos os itens entregues. Liberar mesa somente após a última comanda ativa; não encerrar outras comandas nem usar liberação manual da recepção. Preservar histórico, unicidade de pagamento, revogação das sessões e liberação do cartão correto. Nunca simular confirmação de pagamento. Ao integrar, remover dados de demonstração do fluxo operacional.
 
 Referência real em `screenshots/figma-caixa.png`, Figma `4:1654`. Taxas/pré-conta são adaptações autorizadas seguindo o padrão existente; o protótipo não detalha esse fluxo. Reutilizar componentes e contratos compartilhados. Manter isolamento/sandbox do Electron e permissões negadas por padrão; impressão futura deve ser restrita à pré-conta, sem bridge genérico para arquivos ou execução.
+
+## Histórico — 26/11/2026
+
+`src/Historico.tsx` consulta pagamentos persistidos: começa recolhido, abre lista resumida paginada e carrega os detalhes do pagamento selecionado. Usar o snapshot da pré-conta paga, sem recalcular pelo cadastro. Conta zerada é bloqueada na API.

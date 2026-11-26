@@ -1,4 +1,4 @@
-import type { AvisosContasDto, ContaCaixaDto, CobrancaDto, DocumentoContaDto, FechamentoDto, FormaPagamento, PagamentoDto, PrecontaDto, TaxaInput } from '@restaurante/contracts';
+import type { AvisosContasDto, ContaCaixaDto, CobrancaDto, DocumentoContaDto, FechamentoDto, FormaPagamento, PagamentoDto, PagamentoResumoDto, PagamentoDetalheDto, PrecontaDto, TaxaInput } from '@restaurante/contracts';
 import { Prisma, type PrismaClient } from '../../generated/prisma/client';
 import { exigir } from '../validacao';
 import { erroBanco, hash, PrismaSprintService } from '../sprint-service';
@@ -63,6 +63,7 @@ export class PrismaCaixaService {
       const vinculo = await tx.vinculoCartao.findUnique({ where: { idComanda } });
       exigir(ativos.some(v => v === c.status) && !c.dataFechamento && c.mesa.status === 'OCUPADA' && vinculo?.idCartao === c.idCartao,
         401, 'SESSAO_INVALIDA', 'Atendimento encerrado ou alterado.');
+      exigir((await this.documento(tx, idComanda)).subtotal > 0, 409, 'CONTA_ZERADA', 'Não é possível solicitar uma conta zerada. Confirme um pedido com valor maior que zero.');
       if (c.status === 'CONTA_SOLICITADA') {
         exigir(c.formaPagamento === forma, 409, 'FECHAMENTO_JA_SOLICITADO', 'O fechamento já foi solicitado com outra forma de pagamento.');
         return { idComanda, status: c.status, formaPagamento: c.formaPagamento, solicitadoEm: c.fechamentoSolicitadoEm?.toISOString() ?? null };
@@ -76,9 +77,22 @@ export class PrismaCaixaService {
     const rows = await this.db().comanda.findMany({ where: { status: 'CONTA_SOLICITADA', dataFechamento: null }, include: { mesa: true, cliente: { select: { nome: true } } }, orderBy: [{ fechamentoSolicitadoEm: 'asc' }, { idComanda: 'asc' }] });
     return rows.map(c => ({ idComanda: c.idComanda, numeroMesa: c.mesa.numero, nomeCliente: c.cliente.nome, formaPagamento: c.formaPagamento, solicitadoEm: c.fechamentoSolicitadoEm?.toISOString() ?? null }));
   }
+  async pagamentos(antes?: number): Promise<PagamentoResumoDto[]> {
+    const rows = await this.db().pagamento.findMany({ where: antes ? { idPagamento: { lt: antes } } : {}, orderBy: { idPagamento: 'desc' }, take: 30, include: { preconta: true } });
+    return rows.map(p => {
+      const d = precontaDto(p.preconta);
+      return { idPagamento: p.idPagamento, idComanda: p.idComanda, idPreconta: p.idPreconta, forma: p.forma, valor: p.valor.toNumber(), pagoEm: p.pagoEm.toISOString(), numeroMesa: d.numeroMesa, nomeCliente: d.nomeCliente };
+    });
+  }
+  async pagamento(idPagamento: number): Promise<PagamentoDetalheDto> {
+    const p = await this.db().pagamento.findUnique({ where: { idPagamento }, include: { preconta: true } });
+    exigir(p, 404, 'PAGAMENTO_INEXISTENTE', 'Pagamento não encontrado.');
+    const preconta = precontaDto(p.preconta);
+    return { idPagamento, idComanda: p.idComanda, idPreconta: p.idPreconta, forma: p.forma, valor: p.valor.toNumber(), pagoEm: p.pagoEm.toISOString(), numeroMesa: preconta.numeroMesa, nomeCliente: preconta.nomeCliente, preconta };
+  }
   private async documento(tx: Tx, idComanda: number): Promise<DocumentoContaDto> {
     const c = await tx.comanda.findUniqueOrThrow({ where: { idComanda }, include: { mesa: true, cliente: { select: { nome: true } }, pedidos: { orderBy: { idPedido: 'asc' }, include: { itens: { orderBy: { idItem: 'asc' }, include: { produto: true } } } } } });
-    const itens = c.pedidos.flatMap(p => p.itens.map(i => ({ idItem: i.idItem, idPedido: p.idPedido, nomeProduto: i.produto.nome, quantidade: i.quantidade, precoUnitario: i.produto.preco.toNumber(), subtotal: i.produto.preco.mul(i.quantidade).toNumber(), status: i.status === 'PENDENTE' ? 'RECEBIDO' as const : i.status })));
+    const itens = c.pedidos.flatMap(p => p.itens.map(i => ({ idItem: i.idItem, idPedido: p.idPedido, nomeProduto: i.nomeProduto ?? i.produto.nome, quantidade: i.quantidade, precoUnitario: (i.precoUnitario ?? i.produto.preco).toNumber(), subtotal: (i.precoUnitario ?? i.produto.preco).mul(i.quantidade).toNumber(), status: i.status === 'PENDENTE' ? 'RECEBIDO' as const : i.status })));
     const subtotal = itens.reduce((sum, i) => sum.add(i.subtotal), new Prisma.Decimal(0)).toNumber();
     exigir(subtotal <= 99999999.99, 409, 'TOTAL_EXCEDIDO', 'Consumo excede o limite da conta.');
     return { idComanda, numeroMesa: c.mesa.numero, nomeCliente: c.cliente.nome, formaPagamento: c.formaPagamento, solicitadoEm: c.fechamentoSolicitadoEm?.toISOString() ?? null, itens, subtotal, taxas: [], total: subtotal };
@@ -101,6 +115,7 @@ export class PrismaCaixaService {
       const c = await bloquear(tx, idComanda); aguardando(c);
       exigir(c.formaPagamento, 409, 'FORMA_AUSENTE', 'A comanda não informa forma de pagamento.');
       const base = await this.documento(tx, idComanda);
+      exigir(base.subtotal > 0, 409, 'CONTA_ZERADA', 'Não é possível emitir uma conta zerada.');
       const documento = { ...base, ...calcularTaxas(base.subtotal, taxas) };
       // Não substitui uma conta já enviada ao garçom antes de seu retorno.
       exigir(!await tx.cobranca.findFirst({ where: { concluidaEm: null, preconta: { idComanda } } }), 409, 'COBRANCA_PENDENTE', 'Aguarde o retorno do garçom antes de emitir outra versão.');
@@ -144,6 +159,7 @@ export class PrismaCaixaService {
       exigir(!await tx.pagamento.findUnique({ where: { idComanda } }), 409, 'PAGAMENTO_DUPLICADO', 'Esta comanda já foi paga.');
       aguardando(c);
       const d = await this.vigente(tx, idComanda, idPreconta);
+      exigir(d.subtotal > 0, 409, 'CONTA_ZERADA', 'Não é possível pagar uma conta zerada.');
       exigir(d.formaPagamento, 409, 'FORMA_AUSENTE', 'Forma de pagamento não informada.');
       exigir(await tx.itemPedido.count({ where: { pedido: { idComanda }, status: { not: 'ENTREGUE' } } }) === 0, 409, 'ITENS_PENDENTES', 'Entregue todos os itens antes de confirmar o pagamento.');
       const now = new Date();

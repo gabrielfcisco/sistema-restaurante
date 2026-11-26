@@ -9,3 +9,7 @@ Sprint 4: US-20 (setor responsável) e US-26 (cadastro de produtos) usam este me
 Consulte `screenshots/` e os nós Figma registrados no documento da sprint antes de construir telas. A captura de categorias não define automaticamente a tela de produtos. Não inventar referências ou sucesso de gravação. Validar no backend e só confirmar após resposta real. Bloquear alteração de setor enquanto houver itens não entregues em atendimentos ativos; proteger contra confirmação concorrente de pedidos. A navegação Produtos contém uma prévia autorizada em `src/Produtos.tsx`.
 
 Não importar Prisma, Node, segredos ou internals de outros apps. Reutilizar `ui`, `api-client` e `contracts`; manter Electron isolado. Edição de preços/disponibilidade de produtos existentes (US-27), upload e relatórios não estão autorizados por este escopo.
+
+## Ajustes solicitados em 26/11/2026
+
+O responsável autorizou edição completa e exclusão de produtos, envio de fotos, exclusão de categorias e consulta do histórico de pagamentos. Estas decisões substituem as restrições anteriores sobre esse escopo. ItemPedido preserva nome/preço no momento da confirmação; não voltar a recalcular pedidos pelo preço atual do cadastro. A migration incremental `20261126000000_gestao_produtos` registra os valores disponíveis dos itens existentes. Produtos excluídos ficam fora da gestão e do cardápio, mantendo relações históricas. Categorias com produtos vinculados não podem ser excluídas. Conta com consumo zero não pode ser solicitada, emitida ou paga.

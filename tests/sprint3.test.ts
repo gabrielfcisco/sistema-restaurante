@@ -9,6 +9,7 @@ import type { OperacaoService } from '../apps/api/src/modules/operacao/service';
 import { ErroApi } from '../apps/api/src/modules/validacao';
 
 const categorias: CategoriasService = {
+  async excluir() {},
   async listar() { return [{ idCategoria: 'PRATO', nome: 'Pratos', ativo: true }]; },
   async criar(nome) { return { idCategoria: 'nova', nome, ativo: true }; },
   async alterar(id, input) { return { idCategoria: id, nome: input.nome ?? 'Pratos', ativo: input.ativo ?? true }; }

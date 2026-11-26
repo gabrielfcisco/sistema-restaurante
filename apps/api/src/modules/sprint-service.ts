@@ -15,7 +15,7 @@ function atendimento(c: Comanda & { cartao: Cartao | null }): AtendimentoDto {
 function produtoResumo(p: Produto & { grupo: Categoria }): ProdutoResumoDto {
   return {
     idProduto: p.idProduto, nome: p.nome, descricao: p.descricao, preco: Number(p.preco),
-    categoria: p.categoria, nomeCategoria: p.grupo.nome, setor: p.setor, disponivel: p.ativo && p.grupo.ativo
+    categoria: p.categoria, nomeCategoria: p.grupo.nome, setor: p.setor, imagemPath: p.imagemPath, disponivel: p.ativo && !p.excluidoEm && p.grupo.ativo
   };
 }
 export interface SprintService {
@@ -208,7 +208,7 @@ export class PrismaSprintService implements SprintService {
   async produtosCardapio(token: string, categoria?: CategoriaCardapio): Promise<ProdutoResumoDto[]> {
     await this.sessao(token);
     const produtos = await this.db().produto.findMany({
-      where: { ativo: true, grupo: { ativo: true }, ...(categoria ? { categoria } : {}) },
+      where: { ativo: true, excluidoEm: null, grupo: { ativo: true }, ...(categoria ? { categoria } : {}) },
       include: { grupo: true },
       orderBy: [{ categoria: 'asc' }, { nome: 'asc' }, { idProduto: 'asc' }]
     });
@@ -217,7 +217,7 @@ export class PrismaSprintService implements SprintService {
   async detalheProduto(token: string, idProduto: number): Promise<ProdutoResumoDto> {
     await this.sessao(token);
     const produto = await this.db().produto.findUnique({ where: { idProduto }, include: { grupo: true } });
-    exigir(produto, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
+    exigir(produto && !produto.excluidoEm, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
     return produtoResumo(produto);
   }
   async confirmarPedido(idComanda: number, input: CriarPedidoInput, token: string, key: string): Promise<{ dto: PedidoConfirmadoDto; replay: boolean }> {
@@ -271,11 +271,15 @@ export class PrismaSprintService implements SprintService {
         await tx.$queryRaw`SELECT id_produto FROM produto WHERE id_produto = ${idProduto} FOR UPDATE`;
       }
       const produtos = await tx.produto.findMany({ where: { idProduto: { in: idsUnicos } }, include: { grupo: true } });
+      // Uma edição pode mover o produto enquanto aguardamos os locks. Não confirmar
+      // usando uma categoria que esta transação não bloqueou e revalidou.
+      const categoriasBloqueadas = new Set(referencias.map(p => p.categoria));
+      exigir(produtos.every(p => categoriasBloqueadas.has(p.categoria)), 409, 'PRODUTO_ALTERADO', 'A categoria de um produto foi alterada. Atualize o cardápio e tente novamente.');
       const mapaProdutos = new Map(produtos.map(p => [p.idProduto, p]));
       for (const item of normalizedItens) {
         const p = mapaProdutos.get(item.idProduto);
         exigir(p, 404, 'PRODUTO_INEXISTENTE', 'Produto não encontrado.');
-        exigir(p.ativo && p.grupo.ativo, 409, 'PRODUTO_INDISPONIVEL', `O item "${p.nome}" está indisponível no momento.`);
+        exigir(p.ativo && !p.excluidoEm && p.grupo.ativo, 409, 'PRODUTO_INDISPONIVEL', `O item "${p.nome}" está indisponível no momento.`);
       }
 
       const dataHora = new Date();
@@ -287,6 +291,8 @@ export class PrismaSprintService implements SprintService {
           itens: {
             create: normalizedItens.map(item => ({
               idProduto: item.idProduto,
+              nomeProduto: mapaProdutos.get(item.idProduto)!.nome,
+              precoUnitario: mapaProdutos.get(item.idProduto)!.preco,
               quantidade: item.quantidade,
               observacao: item.observacao,
               status: 'RECEBIDO'
@@ -372,15 +378,15 @@ export class PrismaSprintService implements SprintService {
     dataHora: Date;
     status: string;
     comanda: { idMesa: number; mesa: { numero: number } };
-    itens: Array<{ idItem: number; idProduto: number; quantidade: number; observacao: string | null; status: string; produto: Produto }>;
+    itens: Array<{ idItem: number; idProduto: number; quantidade: number; observacao: string | null; status: string; nomeProduto?: string | null; precoUnitario?: Prisma.Decimal | null; produto: Produto }>;
   }): PedidoConfirmadoDto {
     const itens = pedido.itens.map(item => {
-      const precoUnitario = Number(item.produto.preco);
+      const precoUnitario = Number(item.precoUnitario ?? item.produto.preco);
       const subtotal = Math.round(precoUnitario * item.quantidade * 100) / 100;
       return {
         idItem: item.idItem,
         idProduto: item.idProduto,
-        nomeProduto: item.produto.nome,
+        nomeProduto: item.nomeProduto ?? item.produto.nome,
         quantidade: item.quantidade,
         precoUnitario,
         subtotal,

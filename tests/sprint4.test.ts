@@ -1,3 +1,9 @@
+import { once } from 'node:events';
+import type { AddressInfo } from 'node:net';
+import { unlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createApp } from '../apps/api/src/app';
+import { diretorioImagens, validarImagem } from '../apps/api/src/imagens';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { calcularTaxas, formaPagamento, valorMonetario } from '../apps/api/src/modules/caixa/service';
@@ -30,4 +36,22 @@ test('documento preserva centavos e escapa nomes sem executar conteúdo do cadas
   const html = htmlPreconta({ idPreconta: 2, idComanda: 3, numeroMesa: 8, nomeCliente: '<script>alert(1)</script>', criadaEm: '2026-11-25T12:00:00Z', formaPagamento: 'PIX', itens: [{ nomeProduto: '<img src=x>', quantidade: 1, precoUnitario: 0.05, subtotal: 0.05 }], subtotal: 0.05, taxas: [{ nome: 'Serviço', tipo: 'PERCENTUAL', valor: 10, total: 0.01 }], total: 0.06 });
   assert.ok(html.includes('&lt;script&gt;')); assert.ok(html.includes('&lt;img src=x&gt;')); assert.ok(html.includes('0,06')); assert.ok(html.includes('Não comprova pagamento'));
   assert.doesNotMatch(html, /<script>|<img/);
+});
+
+
+test('foto: upload limitado, caminho relativo, leitura pela API e rejeição de arquivo inválido', async () => {
+  const server = createApp(async () => {}).listen(0, '127.0.0.1'); await once(server, 'listening');
+  const base = 'http://127.0.0.1:' + (server.address() as AddressInfo).port + '/api'; let path: string | undefined;
+  try {
+    const foto = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=', 'base64');
+    const r = await fetch(base + '/administracao/imagens', { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: foto });
+    assert.equal(r.status, 201); path = (await r.json()).imagemPath;
+    assert.match(path!, /^cardapio\/uploads\/[0-9a-f-]{36}\.png$/); assert.equal(await validarImagem(path), path);
+    const imagem = await fetch(base + '/assets/' + path); assert.equal(imagem.status, 200); assert.equal(imagem.headers.get('x-content-type-options'), 'nosniff'); assert.deepEqual(Buffer.from(await imagem.arrayBuffer()), foto);
+    for (const type of ['image/png', 'image/svg+xml', 'application/json']) {
+      const r = await fetch(base + '/administracao/imagens', { method: 'POST', headers: { 'Content-Type': type }, body: type === 'application/json' ? '{}' : '<svg>não é uma foto</svg>' }); assert.equal(r.status, 400);
+    }
+    assert.equal((await fetch(base + '/administracao/imagens', { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: Buffer.alloc(5 * 1024 * 1024 + 1) })).status, 413);
+    for (const value of ['../.env', 'C:/foto.png', 'https://example.com/a.png', 12, 'cardapio/uploads/00000000-0000-0000-0000-000000000000.png']) await assert.rejects(validarImagem(value));
+  } finally { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); if (path) await unlink(join(diretorioImagens, path.slice('cardapio/'.length))); }
 });
