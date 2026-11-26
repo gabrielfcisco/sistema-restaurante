@@ -25,10 +25,10 @@ export class PrismaGarcomService implements GarcomService {
     const pedidos = c.pedidos.map(p => {
       let valorPedido = new Prisma.Decimal(0);
       const itens = p.itens.map(i => {
-        const subtotal = i.produto.preco.mul(i.quantidade);
+        const subtotal = (i.precoUnitario ?? i.produto.preco).mul(i.quantidade);
         valorPedido = valorPedido.add(subtotal);
-        return { idItem: i.idItem, idProduto: i.idProduto, nomeProduto: i.produto.nome, quantidade: i.quantidade,
-          precoUnitario: i.produto.preco.toNumber(), subtotal: subtotal.toNumber(), observacao: i.observacao,
+        return { idItem: i.idItem, idProduto: i.idProduto, nomeProduto: i.nomeProduto ?? i.produto.nome, quantidade: i.quantidade,
+          precoUnitario: (i.precoUnitario ?? i.produto.preco).toNumber(), subtotal: subtotal.toNumber(), observacao: i.observacao,
           setor: i.produto.setor, status: statusPreparo(i.status) };
       });
       total = total.add(valorPedido);

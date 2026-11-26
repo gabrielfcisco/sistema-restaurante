@@ -2,9 +2,9 @@ name: Verificação da sprint
 
 on:
   pull_request:
-    branches: [sprint-02, main]
+    branches: [sprint-02, sprint-04, main]
   push:
-    branches: [codex/us-12-us-13-paineis, sprint-02]
+    branches: [codex/us-12-us-13-paineis, codex/sprint-04-completa, sprint-02, sprint-04]
 
 permissions:
   contents: read

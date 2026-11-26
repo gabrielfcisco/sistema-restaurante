@@ -7,6 +7,7 @@ export interface CategoriasService {
   listar(): Promise<CategoriaDto[]>;
   criar(value: string): Promise<CategoriaDto>;
   alterar(id: string, input: AlterarCategoriaInput): Promise<CategoriaDto>;
+  excluir(id: string): Promise<void>;
 }
 export class PrismaCategoriasService implements CategoriasService {
   constructor(private db: () => PrismaClient) {}
@@ -14,6 +15,13 @@ export class PrismaCategoriasService implements CategoriasService {
   async criar(value: string) {
     try { return await this.db().categoria.create({ data: { nome: nome(value) } }); }
     catch (error) { throw this.erro(error); }
+  }
+  async excluir(idCategoria: string) {
+    try { await this.db().categoria.delete({ where: { idCategoria } }); }
+    catch (error) {
+      if ((error as { code?: string }).code === 'P2003') throw new ErroApi(409, 'CATEGORIA_EM_USO', 'Esta categoria possui produtos vinculados. Mova os produtos para outra categoria ou inative esta categoria para preservar o histórico.');
+      throw this.erro(error);
+    }
   }
   async alterar(idCategoria: string, input: AlterarCategoriaInput) {
     exigir(input.nome !== undefined || input.ativo !== undefined, 400, 'ENTRADA_INVALIDA', 'Informe nome ou status.');

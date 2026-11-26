@@ -1,5 +1,9 @@
 # Banco — Sprint 01
 
+## Sprint 4 — persistência
+
+Migration incremental `20261125000000_fechamento_pagamento`: `Comanda.formaPagamento` e horário da solicitação, `PreConta` com documento JSON imutável por emissão, `Cobranca` única por pré-conta e `Pagamento` único por comanda/versão, com valor Decimal(14,2), forma e data. Sem backfill financeiro. `PAGA` indica quitação; `FECHADA` continua encerramento manual legado. Transação com lock de mesa registra pagamento, revoga apenas suas sessões, libera só seu cartão e, após a última comanda ativa, libera mesa/cancela chamados. Critérios e execução em [sprint-04.md](sprint-04.md). Não foi migrado o banco do grupo.
+
 US-12/13 acrescentam a migration aditiva `20261022000000_status_recebido`, preservando o histórico. Consulte [compatibilidade e execução](us-12-us-13.md). Aplicar somente após revisar o destino de desenvolvimento.
 
 MySQL 8 / Prisma. A migration inicial foi preservada. A nova `20261003000000_sprint01` acrescenta:

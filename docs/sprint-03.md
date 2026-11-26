@@ -16,7 +16,9 @@ Integração em 04/11/2026: incorporadas US-14/16 e US-18/21 aos fluxos de US-15
 
 Os contratos finais prevalecem sobre o material de preparação histórica abaixo.
 
-## Escopo e estado
+## Preparação histórica — escopo e estado antes da integração
+
+Esta seção e as propostas seguintes registram a preparação anterior. **Estado atual: todas as US-14/15/16/17/18/19/21 estão integradas.** Categorias já são relacionais. Descrições de enum, prévias e rotas não implementadas abaixo são históricas, não instruções para refazer a Sprint 3. Para trabalho novo, consultar `sprint-04.md` e os contratos finais.
 
 Implementação atualizada em 2026-11-03: US-18 e US-21 implementadas em API, contratos, cliente e telas da mesa/garçom. A migration incremental `20261103000000_us18_chamadas` cria a persistência de chamadas. As demais histórias permanecem no estado descrito abaixo.
 

@@ -1,6 +1,9 @@
 
 import type { HealthResponse, ClienteDto, CriarClienteInput, MesaDto, AbrirAtendimentoInput, AtendimentoDto, SessaoMesaDto, AtendimentoMesaDto, MesaDetalheDto, LiberarMesaDto, ItemFilaDto, SetorOperacional, AlterarStatusItemInput, StatusItemDto, CriarPedidoInput, PedidoConfirmadoDto, ProdutoResumoDto, CategoriaCardapio, PedidosComandaEventoDto, ChamadaDto, ExtratoComandaDto } from '@restaurante/contracts';
 import type { CategoriaDto, AlterarCategoriaInput, MesaGarcomDto, ComandaGarcomDto } from '@restaurante/contracts';
+import type { AvisosContasDto, ContaResumoDto, ContaCaixaDto, CobrancaDto, CriarProdutoInput, ProdutoGestaoDto, FechamentoDto, FormaPagamento, PagamentoDto, PrecontaDto, TaxaInput } from '@restaurante/contracts';
+import type { PagamentoResumoDto, PagamentoDetalheDto } from '@restaurante/contracts';
+export { acompanharContas } from './contas';
 export interface ApiRequest { path: string; method: string; body?: unknown; sessionToken?: string; idempotencyKey?: string }
 export interface ApiResult { status: number; data?: unknown }
 export type ApiTransport = (request: ApiRequest) => Promise<ApiResult>;
@@ -34,6 +37,33 @@ export function createApiClient(baseUrl: string, transport?: ApiTransport) {
     return result.data as T;
   }
   return {
+    imagemUrl: (path: string) => base + '/assets/' + path,
+    enviarFoto: async (file: File): Promise<{ imagemPath: string }> => {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) throw new Error('Selecione uma foto PNG, JPEG ou WebP de até 5 MB.');
+      let r: Response;
+      try { r = await fetch(base + '/administracao/imagens', { method: 'POST', headers: { 'Content-Type': file.type }, body: file, signal: AbortSignal.timeout(20000) }); }
+      catch { throw new Error('Não foi possível enviar a foto. Verifique a conexão.'); }
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error?.message ?? 'Não foi possível enviar a foto.');
+      return data;
+    },
+    alterarProduto: (id: number, input: CriarProdutoInput) => request<ProdutoGestaoDto>('/administracao/produtos/' + id, 'PATCH', input),
+    excluirProduto: (id: number) => request<void>('/administracao/produtos/' + id, 'DELETE'),
+    excluirCategoria: (id: string) => request<void>('/administracao/categorias/' + encodeURIComponent(id), 'DELETE'),
+    pagamentos: (antes?: number) => request<PagamentoResumoDto[]>('/caixa/pagamentos' + (antes ? '?antes=' + antes : '')),
+    pagamento: (id: number) => request<PagamentoDetalheDto>('/caixa/pagamentos/' + id),
+    produtosGestao: () => request<ProdutoGestaoDto[]>('/administracao/produtos'),
+    criarProduto: (input: CriarProdutoInput) => request<ProdutoGestaoDto>('/administracao/produtos', 'POST', input),
+    alterarSetor: (id: number, setor: SetorOperacional) => request<ProdutoGestaoDto>('/administracao/produtos/' + id + '/setor', 'PATCH', { setor }),
+    fechamento: (id: number, token: string) => request<FechamentoDto>('/atendimentos/' + id + '/fechamento', 'GET', undefined, token),
+    solicitarFechamento: (id: number, token: string, formaPagamento: FormaPagamento) => request<FechamentoDto>('/atendimentos/' + id + '/solicitar-fechamento', 'POST', { formaPagamento }, token),
+    contasCaixa: () => request<ContaResumoDto[]>('/caixa/comandas'),
+    contaCaixa: (id: number) => request<ContaCaixaDto>('/caixa/comandas/' + id),
+    emitirPreconta: (id: number, taxas: TaxaInput[]) => request<PrecontaDto>('/caixa/comandas/' + id + '/preconta', 'POST', { taxas }),
+    chamarCobranca: (id: number, idPreconta: number) => request<CobrancaDto>('/caixa/comandas/' + id + '/chamar-garcom', 'POST', { idPreconta }),
+    pagar: (id: number, idPreconta: number) => request<PagamentoDto>('/caixa/comandas/' + id + '/pagamento', 'POST', { idPreconta }),
+    avisosContas: () => request<AvisosContasDto>('/garcom/contas'),
+    concluirCobranca: (id: number) => request<{ idCobranca: number }>('/garcom/cobrancas/' + id + '/status', 'PATCH', { status: 'CONCLUIDA' }),
     categorias: () => request<CategoriaDto[]>('/administracao/categorias'),
     criarCategoria: (nome: string) => request<CategoriaDto>('/administracao/categorias', 'POST', { nome }),
     alterarCategoria: (id: string, input: AlterarCategoriaInput) => request<CategoriaDto>('/administracao/categorias/' + encodeURIComponent(id), 'PATCH', input),

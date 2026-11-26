@@ -13,16 +13,22 @@ import { PrismaGarcomService, type GarcomService } from './modules/garcom/servic
 import { garcomRoutes } from './modules/garcom/routes';
 import { PrismaCategoriasService, type CategoriasService } from './modules/administracao/service';
 import { administracaoRoutes } from './modules/administracao/routes';
+import { PrismaProdutosService, produtosRoutes } from './modules/administracao/produtos';
+import { PrismaCaixaService } from './modules/caixa/service';
+import { caixaRoutes } from './modules/caixa/routes';
+import { diretorioImagens, imagensRoutes } from './imagens';
 
-export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig; operacao?: OperacaoService; filaIntervalMs?: number; garcom?: GarcomService; categorias?: CategoriasService } = {}) {
+export function createApp(checkDatabase: () => Promise<void>, options: { service?: SprintService; access?: AccessConfig; operacao?: OperacaoService; filaIntervalMs?: number; garcom?: GarcomService; categorias?: CategoriasService; caixa?: PrismaCaixaService; produtos?: PrismaProdutosService } = {}) {
   const app = express();
-  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178').split(',').map(s => s.trim());
+  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179').split(',').map(s => s.trim());
   app.disable('x-powered-by');
   app.use(cors({ origin(origin, callback) {
     // Apps desktop empacotados (file://) não enviam cookies ou credenciais.
     callback(null, !origin || origin === 'null' || origins.includes(origin));
   } }));
   app.use(express.json({ limit: '32kb' }));
+  app.use('/api/assets/cardapio', express.static(diretorioImagens, { dotfiles: 'deny', setHeaders(res) { res.setHeader('X-Content-Type-Options', 'nosniff'); } }));
+  app.use('/api/administracao', imagensRoutes());
   app.get('/api/health', (_request, response) => {
     response.json({ status: 'ok', service: 'restaurante-api' } satisfies HealthResponse);
   });
@@ -39,6 +45,8 @@ export function createApp(checkDatabase: () => Promise<void>, options: { service
   app.use('/api/bar', operacaoRoutes('BAR', operacao, feed));
   app.use('/api/garcom', garcomRoutes(options.garcom ?? new PrismaGarcomService(getPrisma), operacao, feed));
   app.use('/api/administracao', administracaoRoutes(options.categorias ?? new PrismaCategoriasService(getPrisma)));
+  app.use('/api/administracao', produtosRoutes(options.produtos ?? new PrismaProdutosService(getPrisma)));
+  app.use('/api', caixaRoutes(options.caixa ?? new PrismaCaixaService(getPrisma)));
   app.use((_request, response) => {
     response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada.' } });
   });
@@ -55,4 +63,3 @@ export function createApp(checkDatabase: () => Promise<void>, options: { service
   app.use(handleError);
   return app;
 }
-

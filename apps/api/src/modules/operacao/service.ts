@@ -31,7 +31,7 @@ export class PrismaOperacaoService implements OperacaoService {
     return itens.map(item => ({
       idItem: item.idItem, idPedido: item.idPedido, idComanda: item.pedido.idComanda,
       idMesa: item.pedido.comanda.idMesa, numeroMesa: item.pedido.comanda.mesa.numero,
-      nomeProduto: item.produto.nome, quantidade: item.quantidade, observacao: item.observacao,
+      nomeProduto: item.nomeProduto ?? item.produto.nome, quantidade: item.quantidade, observacao: item.observacao,
       setor: item.produto.setor, status: statusPreparo(item.status) as ItemFilaDto['status'], dataHora: item.pedido.dataHora.toISOString()
     }));
   }

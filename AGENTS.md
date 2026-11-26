@@ -30,21 +30,34 @@ A Sprint 2 está implementada; contratos finais, migrações e verificações da
 
 As decisões e contratos estão em `docs/sprint-03.md` e `docs/contratos-api.md`. Reutilize o serviço operacional para transições e não duplique suas regras nos aplicativos.
 
-US-18 e US-21 foram implementadas em API, contratos, cliente e telas da mesa/garçom; as demais histórias da Sprint 3 não estão implementadas. Ao receber uma história, leia seus critérios oficiais e a documentação indicada, confira o código/schema/rotas existentes e as referências de tela; implemente somente o escopo solicitado. As rotas não marcadas como implementadas em `docs/sprint-03.md` continuam propostas. Não confie apenas nesta documentação: valide cada contrato contra o estado atual do código e registre qualquer divergência ou decisão em aberto antes de assumi-la.
+Todas as histórias da Sprint 3 estão integradas. Ao receber uma história nova, leia seus critérios e a documentação indicada, confira código/schema/rotas e referências de tela; implemente somente o escopo solicitado. Seções históricas de preparação não anulam contratos já implementados. Registre divergências e decisões em aberto.
 
 - Módulos: cozinha/bar (US-14), garçom (US-15/17/18), mesa (US-16/18/21), administração (US-19). Todos usam a API comum.
 - A mesa pode ter várias comandas ativas; na US-17 o garçom lista todas e seleciona uma.
-- `Produto.categoria` é enum hoje; a US-19 migra para categorias persistidas e precisa preservar o catálogo existente.
+- `Produto.categoria` é FK textual para `Categoria`, persistida pela US-19; preservar o catálogo existente.
 - `ItemPedido` não guarda preço histórico; preserve a regra confirmada de preço estável, e não invente snapshot sem decisão.
 - Referências visuais: consultar `apps/<modulo>/screenshots/` e Figma quando acessível. Não inventar capturas ou telas.
 - Acessos sem login só podem ser usados se confirmados e com o limite de rede registrado; não tratar localização do app como autorização.
 
 ## Rotas, persistência e validação
 
-Rotas atuais vivem em `apps/api/src/modules/*/routes.ts` e são montadas em `apps/api/src/modules/sprint-routes.ts`; handlers devem ser finos e delegar regras/transações ao serviço. US-18 e US-21 já estão implementadas; as outras rotas candidatas da Sprint 3 estão em `docs/sprint-03.md`. Os painéis existentes e as novas rotas de garçom/administração foram definidos sem login, somente na rede interna, conforme decisão do Grupo 9.
+Rotas atuais vivem em `apps/api/src/modules/*/routes.ts` e são montadas por `sprint-routes.ts` e `app.ts`; handlers devem ser finos e delegar regras/transações ao serviço. As rotas da Sprint 3 estão implementadas. Os painéis existentes e as rotas de garçom/administração foram definidos sem login, somente na rede interna, conforme decisão do Grupo 9.
 
 Use `npm run check` na raiz após mudanças relevantes, quando o ambiente permitir. Não aplicar migration em banco desconhecido nem usar dados pessoais reais. Registre falhas ambientais separadas de falhas de código.
 
 ## Perfis de agentes
 
-O perfil histórico de rotas Sprint 2 está em `.agents/agents/api-sprint2-routes.md`. O perfil para preparação/rotas Sprint 3 está em `.agents/agents/api-sprint3.md`; siga os contratos candidatos de `docs/sprint-03.md` e não implemente sem solicitação explícita.
+Os perfis históricos estão em `.agents/agents/api-sprint2-routes.md` e `.agents/agents/api-sprint3.md`. Para a sprint atual, consulte `.agents/agents/api-sprint4.md` e `docs/sprint-04.md`.
+
+## Sprint 4 — implementada
+
+- Escopo negociado: US-20, US-22, US-23, US-24, US-25 e US-26 (50 pontos). Critérios completos, tarefas, dependências, propostas e decisões confirmadas em `docs/sprint-04.md`; leitura obrigatória antes de trabalhar nesta sprint.
+- US-20/22/23/24/25/26 implementadas; consultar contratos finais e verificações ao fim de `docs/sprint-04.md`. Preservar esse comportamento e implementar novos escopos somente quando solicitados.
+- Reutilizar mesa, administração, garçom, recepção, cozinha e bar. Produtos pertencem à administração; fechamento à mesa; consulta/pagamento ao caixa. Não duplicar backend ou regras entre apps.
+- US-20/26 compartilham formulário e contratos de produto. US-24/25 compartilham transação de pagamento. Não reutilizar a liberação manual que encerra todas as comandas para quitar uma comanda individual.
+- `CONTA_SOLICITADA` já existe; não criar outro enum equivalente. Persistência usa PreConta/Cobranca/Pagamento e migration incremental `20261125000000_fechamento_pagamento`, sem execução automática no banco de operação.
+- Consulte decisões confirmadas e referências visuais antes de fixar comportamento. Preservar múltiplas comandas por mesa, isolamento das sessões, precisão monetária e histórico. Não incluir US-27/28/29, upload, estorno ou integração financeira sem solicitação.
+
+## Ajustes solicitados em 26/11/2026
+
+O responsável autorizou edição completa e exclusão de produtos, envio de fotos, exclusão de categorias e consulta do histórico de pagamentos. Estas decisões substituem as restrições anteriores sobre esse escopo. ItemPedido preserva nome/preço no momento da confirmação; não voltar a recalcular pedidos pelo preço atual do cadastro. A migration incremental `20261126000000_gestao_produtos` registra os valores disponíveis dos itens existentes. Produtos excluídos ficam fora da gestão e do cardápio, mantendo relações históricas. Categorias com produtos vinculados não podem ser excluídas. Conta com consumo zero não pode ser solicitada, emitida ou paga.

@@ -1,5 +1,9 @@
 # Contratos da API — Sprint 01
 
+## Sprint 4 — contratos implementados
+
+US-20/22/23/24/25/26 estão implementadas. Contratos finais, códigos de conflito, versões da pré-conta, taxas, SSE, confirmação de recebimento e migration estão em [Sprint 4 — entrega funcional](sprint-04.md#entrega-funcional--25112026). A tabela de contratos finais desse documento é a referência destas rotas. Caixa/administração/garçom são exclusivos da rede interna; fechamento da mesa exige sua própria sessão. Pagamento finaliza somente uma comanda e libera mesa só após a última ativa. Nenhum valor/total enviado na chamada de pagamento é aceito.
+
 Regra atual de correção no preparo: cozinha e bar podem mover um item do próprio setor uma etapa por vez, nos dois sentidos: RECEBIDO ↔ EM_PREPARO ↔ PRONTO. Arrastar e os botões usam o mesmo PATCH com o status de origem. Voltar de PRONTO retira o item da fila do garçom; ENTREGUE permanece final. Esta regra prevalece sobre a descrição histórica abaixo.
 
 ## Contratos finais — US-15, US-17 e US-19
@@ -119,3 +123,15 @@ As rotas das **US-14**, **US-16**, **US-18** e **US-21** estão implementadas. U
 | US-18 | GET `/garcom/eventos` (SSE) | Sem login, rede interna | Eventos `chamados` com snapshot da fila; reconexão pode usar GET. |
 | US-18 | PATCH `/garcom/chamados/:idChamada/status` | Sem login, rede interna | `{status:"CONCLUIDA"}`; conflito se já concluída/cancelada. |
 | US-21 | GET `/atendimentos/:idComanda/extrato` | Bearer da sessão vinculada | Itens de pedidos confirmados, qualquer status, com quantidade, preço, subtotal e total em moeda. |
+
+## Extensões de gestão e caixa — 26/11/2026
+
+- `POST /administracao/imagens`: corpo binário PNG/JPEG/WebP, Content-Type correspondente, até 5 MB. Retorna 201 `{ imagemPath }`; leitura pública na rede interna por `GET /assets/{imagemPath}`. Assinatura/tipo validados e nomes UUID gerados no servidor.
+- `POST /administracao/produtos` aceita `imagemPath` opcional, nulo para nenhuma foto. `PATCH /administracao/produtos/:idProduto` recebe os mesmos dados completos; preserva snapshots nos pedidos e bloqueia mudança de setor com itens não entregues.
+- `DELETE /administracao/produtos/:idProduto`: 204, exclusão lógica, sem apagar pedidos/pagamentos; produto deixa gestão/cardápio e não aceita novo pedido/edição.
+- `DELETE /administracao/categorias/:idCategoria`: 204; 409 `CATEGORIA_EM_USO` se houver produtos vinculados, inclusive históricos.
+- `GET /caixa/pagamentos?antes=id`: até 30 pagamentos, id decrescente, resumo com ids, mesa, nome do cliente, data, forma e valor. Cursor exclusivo `antes` para próxima página.
+- `GET /caixa/pagamentos/:idPagamento`: resumo e `preconta` persistida com itens e taxas, sem recalcular o passado. 404 para pagamento inexistente.
+- Solicitar fechamento, emitir pré-conta e pagar rejeitam consumo zero com 409 `CONTA_ZERADA`. Não há quitação fictícia nem inclusão de carrinho não confirmado.
+
+Nome e preço são gravados em ItemPedido ao confirmar. Extratos, filas e contas leem esses valores. A migração preenche o legado com os valores disponíveis antes da edição; não reconstrói preços históricos desconhecidos.

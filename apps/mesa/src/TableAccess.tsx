@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError, createApiClient } from '@restaurante/api-client';
 import type { CategoriaCardapio, CategoriaDto, ExtratoComandaDto, ItemCarrinhoDto, PedidoConfirmadoDto, ProdutoResumoDto, SessaoMesaDto } from '@restaurante/contracts';
 import { AppShell, Button } from '@restaurante/ui';
+import { FORMAS_PAGAMENTO, type FormaPagamento } from '@restaurante/contracts';
 import { browserCamera } from './platform/camera';
 
 const api = createApiClient(import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3333/api');
@@ -63,6 +64,12 @@ export function TableAccess() {
   const [ultimoPedido, setUltimoPedido] = useState<PedidoConfirmadoDto | null>(null);
   const [historicoPedidos, setHistoricoPedidos] = useState<PedidoConfirmadoDto[]>([]);
   const [extrato, setExtrato] = useState<ExtratoComandaDto | null>(null);
+  const [contaSolicitada, setContaSolicitada] = useState(false);
+  const totalConfirmado = historicoPedidos.reduce((total, pedido) => total + pedido.total, 0);
+  const [baseImagens, setBaseImagens] = useState(import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:3333/api');
+  useEffect(() => { void window.restaurante?.painel?.().then(c => setBaseImagens(c.apiUrl)).catch(() => {}); }, []);
+  const [forma, setForma] = useState<FormaPagamento>('PIX');
+  const [ignorarCarrinho, setIgnorarCarrinho] = useState(false);
 
   const chavePedido = useRef(crypto.randomUUID());
   const video = useRef<HTMLVideoElement>(null);
@@ -82,6 +89,7 @@ export function TableAccess() {
     setUltimoPedido(null);
     setHistoricoPedidos([]);
     setExtrato(null);
+    setContaSolicitada(false); setForma('PIX'); setIgnorarCarrinho(false);
     chavePedido.current = crypto.randomUUID();
   }
 
@@ -144,6 +152,30 @@ export function TableAccess() {
       locked.current = false;
       setBusy(false);
     }
+  }
+
+  useEffect(() => {
+    if (!session) return;
+    let active = true, reading = false;
+    const read = async () => {
+      if (reading) return; reading = true;
+      try {
+        const r = await api.fechamento(session.idComanda, session.token);
+        if (active && r.status === 'CONTA_SOLICITADA') { setContaSolicitada(true); setForma(r.formaPagamento ?? 'PIX'); setCarrinho([]); setTelaMesa(t => t === 'extrato' || t === 'enviado' ? t : 'conta-solicitada'); }
+      } catch (e) {
+        if (active && e instanceof ApiError && e.status === 401) { limparEstadoCliente(); setSession(null); setError('Atendimento encerrado. Identifique o próximo cartão.'); }
+      } finally { reading = false; }
+    };
+    void read(); const timer = setInterval(() => void read(), 3000);
+    return () => { active = false; clearInterval(timer); };
+  }, [session]);
+
+  async function solicitarFechamento() {
+    if (!session || locked.current) return;
+    locked.current = true; setBusy(true); setError('');
+    try { await api.solicitarFechamento(session.idComanda, session.token, forma); setContaSolicitada(true); setCarrinho([]); setAvisoToast(null); setTelaMesa('conta-solicitada'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível solicitar a conta.'); }
+    finally { locked.current = false; setBusy(false); }
   }
 
   async function iniciarCamera() {
@@ -259,7 +291,7 @@ export function TableAccess() {
 
   // Manipulação do Carrinho (US-09)
   function adicionarAoCarrinho(produto: ProdutoResumoDto, qtd = 1) {
-    if (!produto.disponivel || qtd < 1) return;
+    if (contaSolicitada || !produto.disponivel || qtd < 1) return;
     setError('');
     setCarrinho(atual => {
       const existente = atual.find(i => i.idProduto === produto.idProduto);
@@ -300,7 +332,7 @@ export function TableAccess() {
   }
 
   async function confirmarEnvioPedido() {
-    if (!session || locked.current) return;
+    if (!session || locked.current || contaSolicitada) return;
     if (carrinho.length === 0) {
       setError('Adicione ao menos um item antes de confirmar o pedido.');
       return;
@@ -380,9 +412,10 @@ export function TableAccess() {
             </div>
             <div className="mesa-topbar-actions">
               <Button type="button" className="secondary" onClick={() => void abrirExtrato()} disabled={busy || offline}>Ver extrato</Button>
-              <Button type="button" className="secondary" onClick={() => setTelaMesa('pedir-conta')} disabled={busy || offline}>Pedir conta</Button>
+              <Button type="button" className="secondary" onClick={() => { setIgnorarCarrinho(false); setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'pedir-conta'); }} disabled={busy || offline || (!contaSolicitada && totalConfirmado <= 0)}>{contaSolicitada ? 'Conta solicitada' : 'Pedir conta'}</Button>
+              {!contaSolicitada && totalConfirmado <= 0 && <p className="muted">A conta só pode ser solicitada após confirmar um pedido com valor maior que zero.</p>}
               <Button type="button" className="secondary" onClick={() => void chamarGarcom()} disabled={busy || offline}>Chamar garçom</Button>
-              <Button type="button" onClick={abrirRevisaoPedido} disabled={busy || offline}>
+              <Button type="button" onClick={abrirRevisaoPedido} disabled={busy || offline || contaSolicitada}>
                 🛒 Carrinho <span className="cart-badge" data-testid="cart-count">{totalItensCarrinho}</span>
               </Button>
               <Button type="button" className="secondary" onClick={() => void sair()}>Sair / trocar cliente</Button>
@@ -405,7 +438,7 @@ export function TableAccess() {
           )}
 
           {/* 1. TELA DE CARDÁPIO (US-07, Tela 6) */}
-          {!offline && telaMesa === 'cardapio' && (
+          {!offline && !contaSolicitada && telaMesa === 'cardapio' && (
             <div className="menu-gateway">
               <div className="heading-row">
                 <div>
@@ -439,7 +472,7 @@ export function TableAccess() {
                     >
                       <div className="product-image-container">
                         <img
-                          src={getImagemProduto(produto.nome)}
+                          src={produto.imagemPath ? baseImagens.replace(/\/$/, '') + '/assets/' + produto.imagemPath : getImagemProduto(produto.nome)}
                           alt={produto.nome}
                           className="product-image"
                           loading="lazy"
@@ -478,7 +511,7 @@ export function TableAccess() {
               <div className="detail-layout">
                 <div className="detail-image-container">
                   <img
-                    src={getImagemProduto(produtoDetalhe.nome, true)}
+                    src={produtoDetalhe.imagemPath ? baseImagens.replace(/\/$/, '') + '/assets/' + produtoDetalhe.imagemPath : getImagemProduto(produtoDetalhe.nome, true)}
                     alt={produtoDetalhe.nome}
                     className="detail-image"
                   />
@@ -553,7 +586,7 @@ export function TableAccess() {
                   <p className="muted">Seu carrinho está vazio. Adicione itens do cardápio antes de confirmar o pedido.</p>
                   <div className="table-actions">
                     <Button type="button" disabled>Pedir</Button>
-                    <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Continuar escolhendo</Button>
+                    <Button type="button" className="secondary" onClick={() => setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'cardapio')}>Continuar escolhendo</Button>
                   </div>
                 </div>
               ) : (
@@ -589,7 +622,7 @@ export function TableAccess() {
                     <p className="muted" style={{ margin: 0 }}>Total</p>
                     <p className="cart-total-value" data-testid="cart-total">{formatarMoeda(valorTotalCarrinho)}</p>
                     <Button type="button" disabled={busy || carrinho.length === 0} onClick={iniciarConfirmacaoEnvio}>Pedir</Button>
-                    <Button type="button" className="secondary" disabled={busy} onClick={() => setTelaMesa('cardapio')}>Continuar escolhendo</Button>
+                    <Button type="button" className="secondary" disabled={busy} onClick={() => setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'cardapio')}>Continuar escolhendo</Button>
                   </aside>
                 </div>
               )}
@@ -651,7 +684,7 @@ export function TableAccess() {
                         ))}
                       </div>
                     ))}
-                    <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
+                    <Button type="button" className="secondary" onClick={() => setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'cardapio')}>Voltar ao cardápio</Button>
                     <Button type="button" onClick={() => void api.pedidosComanda(session.idComanda, session.token).then(lista => {
                       setHistoricoPedidos(lista);
                       if (lista.length > 0) setUltimoPedido(lista[lista.length - 1]);
@@ -669,7 +702,7 @@ export function TableAccess() {
               <h2>Garçom chamado. Aguarde o atendimento.</h2>
               <p>O chamado foi vinculado à mesa {String(session.numeroMesa).padStart(2, '0')}. Um atendente virá até você.</p>
               <div className="table-actions">
-                <Button type="button" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
+                <Button type="button" onClick={() => setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'cardapio')}>Voltar ao cardápio</Button>
               </div>
             </div>
           )}
@@ -685,21 +718,21 @@ export function TableAccess() {
                   <p className="cart-item-subtotal">{formatarMoeda(item.subtotal)}</p>
                 </article>)}</div>}
               <aside className="cart-summary-card"><h3>Total</h3><p className="cart-total-value" data-testid="extrato-total">{formatarMoeda(extrato.total)}</p></aside>
-              <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Voltar ao cardápio</Button>
+              <Button type="button" className="secondary" onClick={() => setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'cardapio')}>Voltar ao cardápio</Button>
             </div>
           )}
 
           {/* 7. PEDIR CONTA (Telas 13, 14, 15) */}
           {!offline && telaMesa === 'pedir-conta' && (
             <div className="confirm-modal-card" data-testid="solicitar-fechamento">
-              {carrinho.length > 0 ? (
+              {carrinho.length > 0 && !ignorarCarrinho ? (
                 <>
                   <span className="confirm-badge" style={{ background: '#fef3c7', color: '#92400e' }}>Atenção</span>
                   <h2>Itens no carrinho não entram na conta</h2>
                   <p>Remova ou envie os itens pendentes antes de solicitar a conta. O consumo confirmado da comanda #{session.idComanda} será encerrado.</p>
                   <div className="table-actions">
                     <Button type="button" className="secondary" onClick={abrirRevisaoPedido}>Ver carrinho</Button>
-                    <Button type="button" onClick={() => setTelaMesa('conta-solicitada')}>Continuar mesmo assim</Button>
+                    <Button type="button" onClick={() => setIgnorarCarrinho(true)}>Continuar mesmo assim</Button>
                   </div>
                 </>
               ) : (
@@ -707,9 +740,10 @@ export function TableAccess() {
                   <span className="confirm-badge">Consumo confirmado</span>
                   <h2>Solicitar fechamento da comanda?</h2>
                   <p>Mesa {String(session.numeroMesa).padStart(2, '0')} · Cartão {session.codigoCartao}. Após confirmar, novas compras serão bloqueadas.</p>
+                  <label htmlFor="forma-conta">Forma de pagamento</label><select id="forma-conta" disabled={busy} value={forma} onChange={e => setForma(e.target.value as FormaPagamento)}>{Object.entries(FORMAS_PAGAMENTO).map(([v, label]) => <option value={v} key={v}>{label}</option>)}</select>
                   <div className="table-actions">
-                    <Button type="button" className="secondary" onClick={() => setTelaMesa('cardapio')}>Cancelar</Button>
-                    <Button type="button" onClick={() => setTelaMesa('conta-solicitada')}>Solicitar fechamento</Button>
+                    <Button type="button" className="secondary" onClick={() => setTelaMesa(contaSolicitada ? 'conta-solicitada' : 'cardapio')}>Cancelar</Button>
+                    <Button type="button" disabled={busy || offline || totalConfirmado <= 0} onClick={() => void solicitarFechamento()}>{busy ? 'Solicitando…' : 'Solicitar fechamento'}</Button>
                   </div>
                 </>
               )}
@@ -721,8 +755,11 @@ export function TableAccess() {
             <div className="confirm-modal-card" data-testid="conta-solicitada">
               <span className="confirm-badge" style={{ background: '#fef3c7', color: '#92400e' }}>Aguardando pagamento</span>
               <h2>Conta solicitada — aguardando pagamento</h2>
+              <p>Forma informada: {FORMAS_PAGAMENTO[forma]}. Aguarde o atendimento.</p>
               <p>Novas compras e pedidos estão bloqueados. Após o pagamento e a devolução, o cartão {session.codigoCartao} será liberado para outro atendimento, mantendo separados os dados e pedidos anteriores.</p>
               <div className="table-actions">
+                <Button type="button" className="secondary" disabled={busy} onClick={() => void abrirExtrato()}>Conferir extrato</Button>
+                <Button type="button" className="secondary" onClick={() => setTelaMesa('enviado')}>Acompanhar pedidos</Button>
                 <Button type="button" className="secondary" onClick={() => void sair()}>Concluir e sair do dispositivo</Button>
               </div>
             </div>

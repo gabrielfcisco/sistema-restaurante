@@ -80,6 +80,8 @@ model Produto {
   grupo Categoria @relation(fields: [categoria], references: [idCategoria], onDelete: Restrict, onUpdate: Cascade)
   setor     SetorProduto
   ativo     Boolean          @default(true)
+  imagemPath String? @map("imagem_path") @db.VarChar(255)
+  excluidoEm DateTime? @map("excluido_em") @db.DateTime(3)
   itens     ItemPedido[]
 
   @@map("produto")
@@ -102,11 +104,55 @@ model Comanda {
   cliente        Cliente       @relation(fields: [idCliente], references: [idCliente], onDelete: Restrict, onUpdate: Cascade, map: "fk_comanda_cliente")
   mesa           Mesa          @relation(fields: [idMesa], references: [idMesa], onDelete: Restrict, onUpdate: Cascade, map: "fk_comanda_mesa")
   pedidos        Pedido[]
+  formaPagamento FormaPagamento? @map("forma_pagamento")
+  fechamentoSolicitadoEm DateTime? @map("fechamento_solicitado_em") @db.DateTime(3)
+  precontas PreConta[]
+  pagamento Pagamento?
 
   @@index([idCliente], map: "ix_comanda_cliente")
   @@index([idMesa], map: "ix_comanda_mesa")
   @@index([status], map: "ix_comanda_status")
   @@map("comanda")
+}
+
+enum FormaPagamento {
+  DINHEIRO
+  PIX
+  DEBITO
+  CREDITO
+}
+
+model PreConta {
+  idPreconta Int @id @default(autoincrement()) @map("id_preconta") @db.UnsignedInt
+  idComanda Int @map("id_comanda") @db.UnsignedInt
+  criadaEm DateTime @default(now()) @map("criada_em") @db.DateTime(3)
+  documento Json
+  comanda Comanda @relation(fields: [idComanda], references: [idComanda], onDelete: Restrict, map: "fk_preconta_comanda")
+  cobranca Cobranca?
+  pagamento Pagamento?
+  @@index([idComanda], map: "ix_preconta_comanda")
+  @@map("preconta")
+}
+
+model Cobranca {
+  idCobranca Int @id @default(autoincrement()) @map("id_cobranca") @db.UnsignedInt
+  idPreconta Int @unique(map: "uq_cobranca_preconta") @map("id_preconta") @db.UnsignedInt
+  criadaEm DateTime @default(now()) @map("criada_em") @db.DateTime(3)
+  concluidaEm DateTime? @map("concluida_em") @db.DateTime(3)
+  preconta PreConta @relation(fields: [idPreconta], references: [idPreconta], onDelete: Restrict, map: "fk_cobranca_preconta")
+  @@map("cobranca")
+}
+
+model Pagamento {
+  idPagamento Int @id @default(autoincrement()) @map("id_pagamento") @db.UnsignedInt
+  idComanda Int @unique(map: "uq_pagamento_comanda") @map("id_comanda") @db.UnsignedInt
+  idPreconta Int @unique(map: "uq_pagamento_preconta") @map("id_preconta") @db.UnsignedInt
+  forma FormaPagamento
+  valor Decimal @db.Decimal(14, 2)
+  pagoEm DateTime @default(now()) @map("pago_em") @db.DateTime(3)
+  comanda Comanda @relation(fields: [idComanda], references: [idComanda], onDelete: Restrict, map: "fk_pagamento_comanda")
+  preconta PreConta @relation(fields: [idPreconta], references: [idPreconta], onDelete: Restrict, map: "fk_pagamento_preconta")
+  @@map("pagamento")
 }
 
 enum StatusChamada {
@@ -167,6 +213,8 @@ model Pedido {
 }
 
 model ItemPedido {
+  nomeProduto String? @map("nome_produto") @db.VarChar(120)
+  precoUnitario Decimal? @map("preco_unitario") @db.Decimal(10, 2)
   idItem     Int              @id @default(autoincrement()) @map("id_item") @db.UnsignedInt
   quantidade Int              @db.UnsignedInt
   observacao String?          @db.VarChar(500)

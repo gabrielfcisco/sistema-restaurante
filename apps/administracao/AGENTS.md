@@ -1,9 +1,15 @@
-# Administração — preparação Sprint 3 (Grupo 9)
+# Administração — Grupo 9
 
-**US-19 implementada:** GET/POST/PATCH reais em `/administracao/categorias`. Formulários validam e preservam entradas em falha; nome/status só mudam após resposta da API. O banco usa Categoria com ID textual estável; inativação preserva produtos/histórico. `VITE_API_URL` configura a API do build, com localhost como padrão. Não implementar produtos/relatórios. A descrição de prévia abaixo é histórica.
+**Estado em 25/11/2026:** US-20/22/23/24/25/26 implementadas. O estado e contratos finais ao fim de `docs/sprint-04.md` (na raiz) prevalecem sobre as notas históricas de preparação abaixo. Preservar as regras e restrições de escopo.
 
-Este é um workspace desktop Electron com prévia visual da US-19 (categorias). Ainda não consome a API e não persiste alterações. Leia `../../AGENTS.md` e `../../docs/sprint-03.md` antes de alterar o app.
+Workspace Electron/React existente. US-19 implementada: categorias persistidas via GET/POST/PATCH `/administracao/categorias`. Preservar formulários, tratamento de falhas, nome único e inativação refletida no cardápio. `Produto.categoria` é FK textual, não enum. Acesso sem login, somente na rede interna; `VITE_API_URL` configura a API.
 
-Decisões confirmadas: sem login, somente na rede interna; categorias dinâmicas persistidas, iniciando pelas categorias existentes `PRATO`, `SOBREMESA` e `BEBIDA`; inativar uma categoria oculta seus produtos sem apagá-los; nomes obrigatórios, aparados e únicos sem diferenciar maiúsculas/minúsculas. O schema atual usa enum em `Produto.categoria`; planejar migration e compatibilidade aditivas antes de qualquer CRUD. O protótipo exibe categorias ilustrativas e informa que ações não são salvas. Não acessar Prisma diretamente pelo frontend.
+Sprint 4: US-20 (setor responsável) e US-26 (cadastro de produtos) usam este mesmo app, a navegação Produtos e um formulário compartilhado. Leia `../../AGENTS.md` e `../../docs/sprint-04.md`. Implementar somente a história solicitada e coordenar contratos com a outra história; não criar outro app de produtos. Lista de gestão pode incluir inativos; catálogo do cliente não serve como substituto.
 
-Consulte `screenshots/` e as referências Figma disponíveis antes de implementar interface. Pasta sem capturas significa que ainda não há referência visual versionada; não inventar telas.
+Consulte `screenshots/` e os nós Figma registrados no documento da sprint antes de construir telas. A captura de categorias não define automaticamente a tela de produtos. Não inventar referências ou sucesso de gravação. Validar no backend e só confirmar após resposta real. Bloquear alteração de setor enquanto houver itens não entregues em atendimentos ativos; proteger contra confirmação concorrente de pedidos. A navegação Produtos contém uma prévia autorizada em `src/Produtos.tsx`.
+
+Não importar Prisma, Node, segredos ou internals de outros apps. Reutilizar `ui`, `api-client` e `contracts`; manter Electron isolado. Edição de preços/disponibilidade de produtos existentes (US-27), upload e relatórios não estão autorizados por este escopo.
+
+## Ajustes solicitados em 26/11/2026
+
+O responsável autorizou edição completa e exclusão de produtos, envio de fotos, exclusão de categorias e consulta do histórico de pagamentos. Estas decisões substituem as restrições anteriores sobre esse escopo. ItemPedido preserva nome/preço no momento da confirmação; não voltar a recalcular pedidos pelo preço atual do cadastro. A migration incremental `20261126000000_gestao_produtos` registra os valores disponíveis dos itens existentes. Produtos excluídos ficam fora da gestão e do cardápio, mantendo relações históricas. Categorias com produtos vinculados não podem ser excluídas. Conta com consumo zero não pode ser solicitada, emitida ou paga.

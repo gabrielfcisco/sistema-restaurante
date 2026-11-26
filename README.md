@@ -1,5 +1,7 @@
 # Sistema de restaurante — Grupo 9
 
+**Sprint 4 finalizada em 26/11/2026:** US-20/22/23/24/25/26 (50 pontos), com produtos/setor, fechamento, caixa, pré-conta, taxas, pagamentos e liberação da mesa. Consulte [contratos, migration e execução](docs/sprint-04.md#entrega-funcional--25112026).
+
 **Sprint 3 integrada.** Cozinha e bar avançam o preparo até PRONTO. O garçom recebe chamados e retirada, confirma a entrega e consulta o consumo por mesa/comanda. O cliente acompanha os pedidos, chama o garçom e consulta o extrato da própria comanda. A administração gerencia categorias persistidas.
 
 Em um novo ambiente de desenvolvimento, confira o destino e aplique as migrations de categorias e chamados antes de iniciar a API. Execute `npm run db:generate` para atualizar o cliente Prisma. Garçom usa a API na porta 3333 do mesmo host no navegador. Configure `VITE_API_URL` para outro endereço e autorize as origens internas em `CORS_ORIGINS` (garçom 5177, administração 5178).
@@ -21,7 +23,7 @@ npm run setup:sprint
 npm run dev
 ```
 
-`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API, os apps desktop e o servidor web móvel do garçom. O telefone deve estar na mesma rede local; abra no navegador o endereço de rede exibido pelo Vite. Garçom e Administração ainda são prévias visuais: as rotas Sprint 3 não estão conectadas. Cozinha e bar consultam suas filas sem login e atualizam por SSE; confira [execução, migration e testes das US-12/13](docs/us-12-us-13.md).
+`setup` copia os exemplos de ambiente sem sobrescrever arquivos existentes. `setup:sprint` provisiona credenciais locais da recepção e da mesa 1, fora da interface React. Configure o banco e aplique as migrations em um banco de desenvolvimento conhecido antes de usar os atendimentos. `dev` inicia a API, os apps desktop e o servidor web móvel do garçom. O telefone deve estar na mesma rede local; abra no navegador o endereço de rede exibido pelo Vite. Garçom e Administração estão integrados à API da Sprint 3. Cozinha e bar consultam suas filas sem login e atualizam por SSE; confira [execução, migration e testes das US-12/13](docs/us-12-us-13.md).
 
 Ao trocar de branch ou receber alterações de dependências, execute `npm ci` novamente na raiz `sistema-restaurante`. Isso atualiza os vínculos dos pacotes internos, incluindo `@restaurante/desktop`. A inicialização verifica a versão do Node e esse pacote antes de abrir as janelas.
 
@@ -35,9 +37,12 @@ npm run dev:cozinha
 npm run dev:bar
 npm run dev:administracao
 npm run dev:garcom
+npm run dev:caixa
 ```
 
 Garçom roda em uma janela Electron com proporções de celular e também pode ser aberto pelo navegador do telefone na rede local usando o endereço `Network` exibido pelo Vite. Administração também roda em Electron.
+
+Caixa usa a porta 5179 e integra contas, pré-contas e pagamentos à API comum. `npm run dev` também o inicia. Após atualizar a branch, execute `npm ci` para reconhecer o workspace novo. Para API em outro host, configure `VITE_API_URL` no ambiente do caixa (exemplo em `apps/caixa/.env.example`). Acrescente `http://localhost:5179` às origens de desenvolvimento em `CORS_ORIGINS` para consumir a API; o exemplo foi atualizado, arquivos `.env` existentes não são sobrescritos.
 
 ## API da sprint 1
 
@@ -70,6 +75,7 @@ npm run db:seed
 | `npm run package:cozinha` | Gera pasta executável desktop da cozinha |
 | `npm run package:bar` | Gera pasta executável desktop do bar |
 | `npm run package:administracao` | Gera pasta executável desktop da administração |
+| `npm run package:caixa` | Gera pasta executável desktop do caixa |
 | `npm run db:generate` | Gera cliente Prisma após mudança de schema |
 | `npm run db:migrate` | Cria/aplica migration em banco de desenvolvimento |
 | `npm run db:studio` | Abre inspeção local do banco |
@@ -79,6 +85,7 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 ## Organização e continuidade
 
 - [Arquitetura e expansão](docs/arquitetura.md)
+- [Sprint 4: histórias, implementação e execução](docs/sprint-04.md)
 - [US-12 e US-13: cozinha e bar](docs/us-12-us-13.md)
 - [Sprint 3: preparação das US-14 a US-19 e US-21](docs/sprint-03.md)
 - [Interfaces, configuração desktop e demonstração da sprint](docs/interfaces.md)
@@ -89,4 +96,10 @@ Os comandos `package:*` geram distribuição em pasta (`release/`), ainda sem in
 
 `apps/api` contém o backend único. Os aplicativos compartilham contratos, cliente HTTP e componentes operacionais. O legado em `legacy/nextjs` não é executado.
 
-O caixa permanece futuro. Não existem endpoints fictícios retornando sucesso para funcionalidades ainda não implementadas.
+Caixa e produtos estão funcionais. Antes de executar, gere o cliente Prisma e aplique `20261125000000_fechamento_pagamento` somente em banco conhecido de desenvolvimento. Banco compartilhado do grupo não foi migrado nesta entrega.
+
+## Ajustes de gestão — 26/11/2026
+
+Administração permite editar nome, descrição, preço, categoria, setor, disponibilidade e foto de produtos; a exclusão preserva pedidos antigos. Categorias sem produtos vinculados podem ser excluídas. O Caixa oferece histórico recolhido, lista resumida e detalhes dos pagamentos. Conta com consumo zero é bloqueada.
+
+Após atualizar, execute `npm run db:generate` e, no banco de desenvolvimento conferido, `npm run db:deploy`, antes de reiniciar `npm run dev`. A migration `20261126000000_gestao_produtos` adiciona foto/exclusão e snapshots de nome/preço dos itens. Os valores antigos são inicializados pelo cadastro disponível na migração; pagamentos já emitidos usam seus próprios documentos persistidos. Fotos enviadas (PNG/JPEG/WebP até 5 MB) ficam em `assets/cardapio/uploads/`, ignoradas pelo Git e incluídas no backup da instalação.
